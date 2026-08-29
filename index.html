@@ -420,6 +420,7 @@ html,body{max-width:100%; overflow-x:hidden}
 .wtgdots s{width:3px; height:3px; border-radius:99px; background:var(--ink-3); opacity:.5;
   text-decoration:none; display:block}
 .wtgd.today .wtgdots s{background:var(--accent); opacity:.85}
+.wtghead.tv .wtgdots{display:none}
 .wtgall{display:grid; grid-template-columns:46px repeat(7,minmax(0,1fr));
   border-bottom:1px solid var(--line); background:var(--card-2); min-height:26px}
 .wtgall > .lb{font-size:9.5px; letter-spacing:.08em; color:var(--ink-3); padding:5px 6px 0 0;
@@ -942,7 +943,26 @@ html,body{max-width:100%; overflow-x:hidden}
   .ntcard{padding:11px 12px 12px}
   .nttext{font-size:14px}
 
+  /* 주간 시간표 — 빈 시간대가 한눈에 보이도록 칸을 최대한 넓게 */
+  .wtghead,.wtgall{grid-template-columns:29px repeat(7,minmax(0,1fr))}
+  .wtghours{width:29px}
+  .wtghour{padding:1px 3px 0 0; gap:1px}
+  .wtghour b{font-size:10px}
+  .wtghour .ap{display:none}
+  .wtgd{padding:4px 1px 5px}
+  .wtgd i{font-size:9px}
+  .wtgd b{font-size:12px}
+  .wtgd.today b{padding:0 4px}
+  .wtgall > .lb{font-size:8.5px; padding:4px 3px 0 0}
+  .wtgacell{padding:2px 1px}
+  .wtgacell .adchip{font-size:9px; padding:0 3px; border-radius:3px}
+  .wtgitem{padding:0 2px 0 4px; font-size:9.5px; line-height:1.25; border-radius:4px}
+  .wtgitem b{font-size:8.5px}
+
   /* 주간 */
+  .wksum{padding:7px 6px 8px}
+  .wkst b{font-size:15px}
+  .wkst span{font-size:9px}
   .wlrow{padding:8px 11px; font-size:13.5px; flex-wrap:wrap; gap:6px}
   .wltime{width:70px; font-size:10.5px}
   .wlday{padding:7px 11px}
@@ -951,9 +971,7 @@ html,body{max-width:100%; overflow-x:hidden}
   .segbar{padding:7px 11px; gap:6px}
   .segbar .sp{display:none}
   .seg2 button{padding:5px 11px; font-size:12px}
-  .wksum{padding:9px 8px 10px}
   .wkst{min-width:44px}
-  .wkst b{font-size:17px}
   .wkrow{grid-template-columns:46px repeat(7,minmax(0,1fr))}
   .wklb{font-size:10.5px; padding-left:6px; padding-right:2px}
   .wklb.sub{padding-left:10px}
@@ -2963,13 +2981,10 @@ function renderProjects(){
 }
 
 /* ═══════════ 주간 ═══════════ */
-const PX_HW = 30;
+let PX_HW = 30;
 function isNarrow(){ return innerWidth < 560; }
 function wkCat(){ return S.view.wkCat || "전체"; }
-function wkView(){
-  if(!S.view.wkViewSet && innerWidth < 640) return "list";
-  return S.view.wkView || "time";
-}
+function wkView(){ return S.view.wkView || "time"; }
 function catOK(it){ const f = wkCat(); return f === "전체" || it.cat === f; }
 const durMin = it => it.allDay ? 0 : Math.max(30, toMin(it.end || it.start) - toMin(it.start));
 function hm(mins){
@@ -2981,6 +2996,7 @@ function taskGroup(title){ return projectOf(title) || "미분류"; }
 function renderWeekly(){
   const days = weekDays(S.view.selected), hb = habits(), met = numHabits();
   const view = wkView(), fcat = wkCat();
+  PX_HW = isNarrow() ? 26 : 30;
   const [from, to] = gridRange();
 
   /* 집계 */
@@ -3009,7 +3025,7 @@ function renderWeekly(){
   const hbPct = hbSlots ? Math.round(hbDone/hbSlots*100) : null;
 
   /* 머리 */
-  let head = '<div class="wtghead"><span></span>';
+  let head = '<div class="wtghead' + (view === "time" ? " tv" : "") + '"><span></span>';
   days.forEach(dk => {
     const d = fromKey(dk), hol = holiday(dk), c = ["wtgd","s"+d.getDay()];
     if(hol) c.push("hol");
