@@ -3587,7 +3587,10 @@ function bindTimeFields(root){
       menu = document.createElement("div");
       menu.className = "tmenu";
       document.body.appendChild(menu);
-      idx = Math.max(0, opts.indexOf(normTime(inp.value)));
+      const want = normTime(inp.value);
+      let i0 = opts.indexOf(want);
+      if(i0 < 0 && want) i0 = Math.max(0, Math.min(opts.length - 1, Math.round(toMin(want) / 15)));
+      idx = Math.max(0, i0);
       paint(); place();
       const cur = menu.querySelector(".topt.cur") || menu.children[idx];
       if(cur) menu.scrollTop = Math.max(0, cur.offsetTop - 90);
