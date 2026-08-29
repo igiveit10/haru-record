@@ -95,9 +95,18 @@ input,textarea,select{font:inherit; color:inherit}
 .tabbar{display:flex; align-items:flex-end; gap:16px; border-bottom:1px solid var(--line);
   margin-bottom:10px; flex-wrap:wrap}
 .tabbar .spacer{flex:1}
-.tabs{display:flex; gap:2px; margin-bottom:-1px}
+.tabs{display:flex; gap:2px; margin-bottom:-1px; flex:1 1 auto; min-width:0;
+  overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
 .tabs button{padding:7px 15px 8px; font-size:14px; color:var(--ink-3); letter-spacing:-.01em;
-  border-bottom:2px solid transparent; transition:color .15s,border-color .15s; white-space:nowrap}
+  border-bottom:2px solid transparent; transition:color .15s,border-color .15s; white-space:nowrap;
+  flex:none}
+@media (max-width:520px){
+  .wrap{padding:12px 12px 48px}
+  .tabs button{padding:7px 11px 8px; font-size:13.5px}
+  .tabbar{gap:8px}
+}
+html,body{max-width:100%; overflow-x:hidden}
 .tabs button:hover{color:var(--ink-2)}
 .tabs button[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent); font-weight:500}
 .tabbar .savebox{padding-bottom:6px}
@@ -252,6 +261,7 @@ input,textarea,select{font:inherit; color:inherit}
 .tgitem.done span{text-decoration:line-through}
 .tgitem.moved,.tgitem.deleted{opacity:.45}
 .tgitem.dragging{cursor:grabbing; z-index:9; box-shadow:var(--pop); opacity:.92}
+.tgitem.held,.wtgitem.held{transform:scale(1.03); outline:2px solid var(--accent); outline-offset:1px}
 .tgfoot{padding:8px 12px; border-top:1px solid var(--line-2); display:flex; gap:10px; flex:none;
   align-items:center}
 .tgfoot button{font-size:12px; color:var(--ink-3)}
@@ -1585,13 +1595,33 @@ function bindDaily(){
     el.onpointerdown = e => {
       if(e.button !== 0) return;
       const it = findItem(ok, id); if(!it || it.allDay) return;
-      const startY = e.clientY;
+      const startY = e.clientY, startX = e.clientX;
       const orig = toMin(it.start), dur = Math.max(30, toMin(it.end || it.start) - orig);
       const [f2, t2] = gridRange(), top0 = f2 * 60;
-      let moved = false, ns = orig;
-      try { el.setPointerCapture(e.pointerId); } catch(err){}
+      const isTouch = e.pointerType === "touch";
+      let moved = false, ns = orig, armed = !isTouch, armTimer = null;
       const label = el.querySelector("b");
+      const block = ev => { if(armed) ev.preventDefault(); };
+      const cleanup = () => {
+        clearTimeout(armTimer);
+        if(isTouch) document.removeEventListener("touchmove", block, {passive:false});
+        el.onpointermove = null; el.onpointerup = null; el.onpointercancel = null;
+      };
+      if(isTouch){
+        document.addEventListener("touchmove", block, {passive:false});
+        armTimer = setTimeout(() => {
+          armed = true; el.classList.add("dragging", "held");
+          try { el.setPointerCapture(e.pointerId); } catch(err){}
+          if(navigator.vibrate) navigator.vibrate(12);
+        }, 320);
+      } else {
+        try { el.setPointerCapture(e.pointerId); } catch(err){}
+      }
       const onMove = ev => {
+        if(!armed){
+          if(Math.abs(ev.clientY - startY) > 8 || Math.abs(ev.clientX - startX) > 8) cleanup();
+          return;
+        }
         const dy = ev.clientY - startY;
         if(!moved && Math.abs(dy) < 4) return;
         moved = true; el._dragged = true; el.classList.add("dragging");
@@ -1601,9 +1631,9 @@ function bindDaily(){
         if(label) label.textContent = toHM(ns) + "–" + toHM(ns + dur);
       };
       const onUp = () => {
-        el.onpointermove = null; el.onpointerup = null; el.onpointercancel = null;
-        el.classList.remove("dragging");
-        if(!moved) return;
+        cleanup();
+        el.classList.remove("dragging", "held");
+        if(!moved){ if(isTouch && armed) el._dragged = true; return; }
         clickGuardUntil = Date.now() + 400;
         const cur = findItem(ok, id); if(!cur) return;
         cur.start = toHM(ns); cur.end = toHM(ns + dur);
@@ -3003,10 +3033,30 @@ function bindWeekly(days){
       const orig = toMin(it.start), dur = durMin(it);
       const origIdx = days.indexOf(el.dataset.k);
       const top0 = from * 60;
-      let moved = false, ns = orig, idx = origIdx;
-      try { el.setPointerCapture(e.pointerId); } catch(err){}
+      const isTouch = e.pointerType === "touch";
+      let moved = false, ns = orig, idx = origIdx, armed = !isTouch, armTimer = null;
       const label = el.querySelector("b");
+      const block = ev => { if(armed) ev.preventDefault(); };
+      const cleanup = () => {
+        clearTimeout(armTimer);
+        if(isTouch) document.removeEventListener("touchmove", block, {passive:false});
+        el.onpointermove = null; el.onpointerup = null; el.onpointercancel = null;
+      };
+      if(isTouch){
+        document.addEventListener("touchmove", block, {passive:false});
+        armTimer = setTimeout(() => {
+          armed = true; el.classList.add("dragging", "held");
+          try { el.setPointerCapture(e.pointerId); } catch(err){}
+          if(navigator.vibrate) navigator.vibrate(12);
+        }, 320);
+      } else {
+        try { el.setPointerCapture(e.pointerId); } catch(err){}
+      }
       const onMove = ev => {
+        if(!armed){
+          if(Math.abs(ev.clientY - startY) > 8 || Math.abs(ev.clientX - startX) > 8) cleanup();
+          return;
+        }
         const dx = ev.clientX - startX, dy = ev.clientY - startY;
         if(!moved && Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
         moved = true; el._dragged = true; el.classList.add("dragging");
@@ -3018,9 +3068,9 @@ function bindWeekly(days){
         if(label) label.textContent = toHM(ns);
       };
       const onUp = () => {
-        el.onpointermove = null; el.onpointerup = null; el.onpointercancel = null;
-        el.classList.remove("dragging"); el.style.transform = "";
-        if(!moved) return;
+        cleanup();
+        el.classList.remove("dragging", "held"); el.style.transform = "";
+        if(!moved){ if(isTouch && armed) el._dragged = true; return; }
         clickGuardUntil = Date.now() + 400;
         const cur = findItem(ok, id); if(!cur) return;
         cur.start = toHM(ns); cur.end = toHM(ns + dur);
