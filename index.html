@@ -4003,7 +4003,12 @@ function openSyncModal(){
       + '<input type="text" class="f" id="sy-gist" placeholder="아직 없으면 오른쪽 버튼으로 만드세요"'
       + ' value="' + esc(sync.gistId) + '" style="flex:1">'
       + (sync.gistId ? '<button class="btn" id="sy-copy">복사</button>' : '')
-      + '<button class="btn" id="sy-new">새로 만들기</button></div></div>'
+      + '<button class="btn" id="sy-new">새로 만들기</button></div>'
+      + '<span class="hbhint">비워 두면 이 토큰의 저장소에서 알아서 찾습니다</span></div>'
+      + (cryptoKey ? '' :
+          '<div class="fld"><label>기록 비밀번호</label>'
+          + '<input type="password" class="f" id="sy-pass" placeholder="다른 기기에서 정한 비밀번호"'
+          + ' autocomplete="off"></div>')
       + '<div class="pdsum">'
       + '<span class="stat">상태 <b>' + esc(busy || syncLabel()) + '</b></span>'
       + '<span class="stat">이 기기 기록 <b>' + mb(bytes) + '</b></span>'
@@ -4020,7 +4025,8 @@ function openSyncModal(){
           ? '<div class="frow"><button class="btn" id="sy-pw">비밀번호 바꾸기</button>'
             + '<button class="btn" id="sy-rec">복구 키 다시 받기</button>'
             + '<button class="btn" id="sy-lock">지금 잠그기</button></div>'
-          : '<span class="hbhint">잠금이 꺼져 있습니다. 켜려면 이 기기의 기록을 지우고 다시 여셔야 합니다.</span>')
+          : '<div class="frow"><span class="hbhint">잠금이 꺼져 있습니다.</span>'
+            + '<span class="sp"></span><button class="btn" id="sy-reset">이 기기 초기화</button></div>')
       + '</div>'
       + '</div><div class="mdfoot">'
       + (sync.on ? '<button class="btn" id="sy-off">연결 해제</button>' : '')
@@ -4056,19 +4062,46 @@ function openSyncModal(){
       } catch(e){ busy = ""; syncMsg = e.message || String(e); draw(); }
     };
     scrim.querySelector("#sy-save").onclick = async () => {
-      sync.token = scrim.querySelector("#sy-token").value.trim();
-      sync.gistId = scrim.querySelector("#sy-gist").value.trim();
-      if(!sync.token || !sync.gistId){ toast("토큰과 저장소를 모두 넣어 주세요"); return; }
-      saveSync();
+      const tk = scrim.querySelector("#sy-token").value.trim();
+      let gid = scrim.querySelector("#sy-gist").value.trim();
+      const pwEl = scrim.querySelector("#sy-pass");
+      const pw = pwEl ? pwEl.value : "";
+      if(!tk){ toast("토큰을 넣어 주세요"); return; }
       busy = "확인 중…"; syncMsg = ""; draw();
       try {
-        const remote = await gistRead(sync.gistId);
-        busy = "";
-        if(remote && (remote.updatedAt || 0) > (S.updatedAt || 0)){
-          await adoptRemote(remote); render();
-          toast("저장소의 기록을 받아왔습니다");
+        if(!gid){
+          busy = "저장소를 찾는 중…"; draw();
+          const list = await ghFetch("/gists?per_page=100", "GET", null, tk);
+          const hits = (list || []).filter(g => g.files && g.files[GIST_FILE]);
+          if(!hits.length) throw new Error("저장소를 찾지 못했습니다. '새로 만들기'를 눌러 주세요");
+          hits.sort((a,b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
+          gid = hits[0].id;
+        }
+        sync.token = tk; sync.gistId = gid; saveSync();
+        const raw = await gistRawText(gid, tk);
+        if(raw !== null){
+          const env = JSON.parse(raw);
+          if(env && env.enc){
+            let ok = false;
+            if(cryptoKey){ try { await decJSON(raw); ok = true; } catch(e){} }
+            if(!ok){
+              if(!env.salt) throw new Error("이 저장소는 예전 방식입니다. 먼저 쓰던 기기에서 ⚙ → 비밀번호 바꾸기를 한 번 해주세요");
+              if(!pw) throw new Error("이 저장소는 잠겨 있습니다. 기록 비밀번호를 넣어 주세요");
+              const key = await deriveKey(pw, ub64(env.salt));
+              const prev = cryptoKey; cryptoKey = key;
+              try { await decJSON(raw); }
+              catch(e){ cryptoKey = prev; throw new Error("비밀번호가 맞지 않습니다"); }
+              lockCfg = {salt: env.salt, check: await encJSON({ok:"haru"})};
+              saveLock();
+            }
+          }
+          const remote = await decJSON(raw);
+          if(remote && (remote.updatedAt || 0) > (S.updatedAt || 0)){
+            await adoptRemote(remote); render();
+            toast("저장소의 기록을 받아왔습니다");
+          } else { await syncPush(true); toast("이 기기 기록을 올렸습니다"); }
         } else { await syncPush(true); toast("이 기기 기록을 올렸습니다"); }
-        close(); renderSave();
+        busy = ""; close(); renderSave();
       } catch(e){ busy = ""; syncMsg = e.message || String(e); draw(); }
     };
     const off = scrim.querySelector("#sy-off");
@@ -4079,6 +4112,13 @@ function openSyncModal(){
     };
     const now = scrim.querySelector("#sy-now");
     if(now) now.onclick = async () => { busy = "동기화 중…"; draw(); await syncPull(false); busy = ""; draw(); };
+    const rs = scrim.querySelector("#sy-reset");
+    if(rs) rs.onclick = () => {
+      if(!confirm("이 기기에 저장된 기록과 설정을 모두 지우고 처음 화면으로 돌아갑니다.\n"
+        + "동기화 저장소의 기록은 그대로 남습니다. 계속할까요?")) return;
+      try { localStorage.removeItem(LS); localStorage.removeItem(LOCK_LS); localStorage.removeItem(SYNC_LS); } catch(e){}
+      location.reload();
+    };
     const lk = scrim.querySelector("#sy-lock");
     if(lk) lk.onclick = () => { close(); lockNow(); };
     const rc = scrim.querySelector("#sy-rec");
