@@ -3989,7 +3989,7 @@ function openSyncModal(){
   scrim.className = "scrim"; scrim.id = "scrim";
   const close = () => { scrim.remove(); document.removeEventListener("keydown", onKey, true); };
   const onKey = e => { if(e.key === "Escape"){ e.stopPropagation(); close(); } };
-  let busy = "";
+  let busy = "", needPw = false;
   const draw = () => {
     const bytes = stateBytes();
     scrim.innerHTML = '<div class="modal wide" role="dialog" aria-modal="true">'
@@ -3999,16 +3999,18 @@ function openSyncModal(){
       + '<div class="fld"><label>GitHub 토큰</label>'
       + '<input type="password" class="f" id="sy-token" placeholder="ghp_ 또는 github_pat_ 로 시작"'
       + ' value="' + esc(sync.token) + '" autocomplete="off"></div>'
+      + (cryptoKey ? '' :
+          '<div class="fld"' + (needPw ? ' style="outline:2px solid var(--sun);outline-offset:6px;border-radius:6px"' : '')
+          + '><label>기록 비밀번호</label>'
+          + '<input type="password" class="f" id="sy-pass" placeholder="다른 기기에서 정한 비밀번호"'
+          + ' autocomplete="off">'
+          + '<span class="hbhint">다른 기기 기록을 가져올 때만 필요합니다</span></div>')
       + '<div class="fld"><label>저장소 (Gist ID)</label><div class="frow">'
       + '<input type="text" class="f" id="sy-gist" placeholder="아직 없으면 오른쪽 버튼으로 만드세요"'
       + ' value="' + esc(sync.gistId) + '" style="flex:1">'
       + (sync.gistId ? '<button class="btn" id="sy-copy">복사</button>' : '')
       + '<button class="btn" id="sy-new">새로 만들기</button></div>'
       + '<span class="hbhint">비워 두면 이 토큰의 저장소에서 알아서 찾습니다</span></div>'
-      + (cryptoKey ? '' :
-          '<div class="fld"><label>기록 비밀번호</label>'
-          + '<input type="password" class="f" id="sy-pass" placeholder="다른 기기에서 정한 비밀번호"'
-          + ' autocomplete="off"></div>')
       + '<div class="pdsum">'
       + '<span class="stat">상태 <b>' + esc(busy || syncLabel()) + '</b></span>'
       + '<span class="stat">이 기기 기록 <b>' + mb(bytes) + '</b></span>'
@@ -4102,7 +4104,15 @@ function openSyncModal(){
           } else { await syncPush(true); toast("이 기기 기록을 올렸습니다"); }
         } else { await syncPush(true); toast("이 기기 기록을 올렸습니다"); }
         busy = ""; close(); renderSave();
-      } catch(e){ busy = ""; syncMsg = e.message || String(e); draw(); }
+      } catch(e){
+        busy = ""; syncMsg = e.message || String(e);
+        needPw = /비밀번호/.test(syncMsg);
+        draw();
+        if(needPw){
+          const pe = scrim.querySelector("#sy-pass");
+          if(pe){ pe.scrollIntoView({block:"center"}); pe.focus(); }
+        }
+      }
     };
     const off = scrim.querySelector("#sy-off");
     if(off) off.onclick = () => {
