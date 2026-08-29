@@ -382,6 +382,46 @@ html,body{max-width:100%; overflow-x:hidden}
 .modal{background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--pop);
   width:min(430px,100%); max-height:calc(100vh - 48px); overflow:auto}
 .modal.wide{width:min(660px,100%)}
+.modal.search{width:min(620px,100%); max-height:min(78vh,640px); display:flex;
+  flex-direction:column; overflow:hidden}
+.sqscrim{place-items:start center; padding-top:min(12vh,90px)}
+.sqhead{display:flex; align-items:center; gap:9px; padding:11px 14px; border-bottom:1px solid var(--line)}
+.sqicon{width:16px; height:16px; color:var(--ink-3); flex:none}
+.sqicon svg{width:16px; height:16px}
+.sqinput{flex:1; min-width:0; border:0; background:none; font-size:16px; color:var(--ink);
+  font-family:inherit; padding:2px 0}
+.sqinput:focus{outline:none}
+.sqinput::placeholder{color:var(--ink-3)}
+.sqx{width:24px; height:24px; border-radius:6px; color:var(--ink-3); display:grid; place-items:center;
+  flex:none; border:0; background:none; cursor:pointer}
+.sqx svg{width:12px; height:12px}
+.sqx:hover{background:var(--line-2); color:var(--ink)}
+.sqbody{flex:1; overflow:auto; min-height:0}
+.sqsec{position:sticky; top:0; z-index:1; padding:7px 14px; background:var(--card-2);
+  border-bottom:1px solid var(--line-2); font-size:10.5px; letter-spacing:.12em; color:var(--ink-3);
+  display:flex; gap:7px}
+.sqsec i{font-style:normal; font-family:var(--mono); opacity:.7}
+.sqrow{display:flex; align-items:center; gap:8px; width:100%; text-align:left; border:0;
+  background:none; padding:8px 14px; border-bottom:1px solid var(--rule); cursor:pointer;
+  font-family:inherit; font-size:13.5px; color:var(--ink)}
+.sqrow.on{background:var(--accent-soft)}
+.sqrow .gdot{background:var(--pc)}
+.sqk{flex:none; width:62px; font-family:var(--mono); font-size:10.5px; color:var(--ink-3);
+  font-variant-numeric:tabular-nums; display:flex; align-items:center; gap:5px}
+.sqt{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.sqt mark{background:var(--accent-soft); color:var(--accent-ink); border-radius:3px; padding:0 2px}
+.sqm{flex:none; font-family:var(--mono); font-size:10px; color:var(--ink-3);
+  font-variant-numeric:tabular-nums}
+.sqrow.done .sqt{color:var(--ink-3); text-decoration:line-through}
+.sqrow.moved .sqt,.sqrow.deleted .sqt{color:var(--ink-3); opacity:.7}
+.sqhint{padding:26px 16px; text-align:center; font-size:12.5px; color:var(--ink-3)}
+.sqmore{padding:6px 14px; font-size:11px; color:var(--ink-3); border-bottom:1px solid var(--rule)}
+.sqfoot{padding:8px 14px; border-top:1px solid var(--line-2); background:var(--card-2);
+  font-size:10.5px; color:var(--ink-3)}
+.sqfoot kbd{font-family:var(--mono); font-size:9.5px; border:1px solid var(--line); border-radius:4px;
+  padding:1px 4px; background:var(--card); margin-right:2px}
+.iconbtn{display:grid; place-items:center; width:30px; padding:0}
+.iconbtn svg{width:14px; height:14px}
 .modal .hbform{padding:14px 18px 4px}
 .mdhead{padding:14px 18px 12px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:9px}
 .mdhead h4{margin:0; font-family:var(--serif); font-size:17px; font-weight:700}
@@ -1038,6 +1078,17 @@ html,body{max-width:100%; overflow-x:hidden}
   .kbdhint{display:none}
   .touchhint{display:block}
 
+  /* 검색 */
+  .sqscrim{padding:8px 8px 8px; place-items:start center}
+  .modal.search{max-height:88vh}
+  .sqhead{padding:10px 12px}
+  .sqrow{padding:9px 12px; gap:6px; font-size:13px; flex-wrap:wrap}
+  .sqk{width:56px}
+  .sqt{flex:1 1 100%; white-space:normal; order:3}
+  .sqm{order:2; margin-left:auto}
+  .sqsec{padding:6px 12px}
+  .sqfoot{display:none}
+
   /* 창 */
   .scrim{padding:12px}
   .mdbody{padding:13px 14px}
@@ -1081,6 +1132,7 @@ html,body{max-width:100%; overflow-x:hidden}
       <span id="savetext">불러오는 중</span>
       <button class="btn primary" id="keep" disabled hidden>보관하기</button>
       <button class="btn" id="export" hidden>내보내기</button>
+      <button class="btn iconbtn" id="searchbtn" title="검색 (/ 또는 Ctrl+K)" aria-label="검색"></button>
       <button class="btn" id="syncbtn" title="동기화 설정" aria-label="동기화 설정">&#9881;</button>
     </div>
   </div>
@@ -1100,6 +1152,7 @@ html,body{max-width:100%; overflow-x:hidden}
 
   <p class="hint kbdhint">
     <kbd>←</kbd> <kbd>→</kbd> 이동 · <kbd>T</kbd> 오늘 · <kbd>D</kbd> <kbd>W</kbd> <kbd>M</kbd> <kbd>N</kbd> <kbd>P</kbd> <kbd>H</kbd> 탭 이동 ·
+    <kbd>/</kbd> 또는 <kbd>Ctrl</kbd>+<kbd>K</kbd> 로 일정·기록·프로젝트를 한 번에 검색 ·
     제목이나 기록에 <kbd>[</kbd> 를 치면 프로젝트가 자동완성됩니다<br>
     예정일정은 빈 곳을 <b>클릭</b>해 추가하고, 항목을 <b>끌어서</b> 시간을 옮기고, <b>더블클릭</b>으로 고치고,
     <b>우클릭</b>으로 완료·연기·삭제합니다. 변경은 이 브라우저에 바로 저장되며,
@@ -1108,6 +1161,7 @@ html,body{max-width:100%; overflow-x:hidden}
   <p class="hint touchhint">
     예정일정은 빈 곳을 <b>눌러</b> 추가하고, 항목을 <b>길게 눌러</b> 끌면 시간이 옮겨집니다.
     항목을 <b>길게 누르면</b> 완료·연기·삭제를 고를 수 있습니다.
+    맨 위 <b>돋보기</b>를 누르면 일정·기록·프로젝트를 한 번에 찾습니다.
     변경은 이 브라우저에 바로 저장되며, <b>보관하기</b>를 눌러야 다른 기기에서도 보입니다.
   </p>
 </div>
@@ -1136,6 +1190,7 @@ const LUNAR_HOL = {"2026-02-16":"설날 연휴","2026-02-17":"설날","2026-02-1
 const SVG_CHECK = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.4 7.4 5.6 10.6 11.6 3.6"/></svg>';
 const SVG_ARROW = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 7h9.4M8 3.8 11.2 7 8 10.2"/></svg>';
 const SVG_X = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3.4 3.4 10.6 10.6M10.6 3.4 3.4 10.6"/></svg>';
+const SVG_SEARCH = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="6.2" cy="6.2" r="4.3"/><path d="M9.4 9.4 12.4 12.4"/></svg>';
 const SVG_PEN = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.6 1.9 12.1 4.4 4.6 11.9 1.6 12.4 2.1 9.4z"/></svg>';
 
 /* ═══════════ 날짜/시간 ═══════════ */
@@ -3768,6 +3823,146 @@ function hilite(text, q){
     .map((x,i) => i % 2 ? '<mark>' + x + '</mark>' : x).join("");
 }
 
+/* ═══════════ 통합 검색 ═══════════ */
+const SQ_CAP = 25;
+function searchAll(q){
+  const s = q.trim().toLowerCase();
+  const out = {items:[], notes:[], prjs:[], habits:[], q:s};
+  if(!s) return out;
+  const hit = t => (t || "").toLowerCase().indexOf(s) >= 0;
+  Object.keys(S.items).forEach(k => (S.items[k] || []).forEach(it => {
+    if(hit(it.title)) out.items.push({k, it});
+  }));
+  Object.keys(S.notes).forEach(k => (S.notes[k] || []).forEach(n => {
+    if(hit(n.text) || hit(n.kind)) out.notes.push({k, n});
+  }));
+  allProjectNames().forEach(nm => { if(hit(nm)) out.prjs.push(nm); });
+  habits().forEach(h => { if(hit(h.name)) out.habits.push(h); });
+  /* 가까운 날짜부터 */
+  const near = k => Math.abs(dayNo(k) - dayNo(TODAY));
+  out.items.sort((a,b) => near(a.k) - near(b.k) || (a.it.start || "").localeCompare(b.it.start || ""));
+  out.notes.sort((a,b) => b.k.localeCompare(a.k));
+  out.prjs.sort((a,b) => a.localeCompare(b, "ko"));
+  return out;
+}
+function sqSnip(text, q, len){
+  const t = (text || "").replace(/\s*\n\s*/g, " ").trim();
+  const i = t.toLowerCase().indexOf(q.toLowerCase());
+  if(i < 0) return esc(t.slice(0, len)) + (t.length > len ? "…" : "");
+  const st = Math.max(0, i - 16), en = st + len;
+  return (st ? "…" : "") + hilite(t.slice(st, en), q) + (en < t.length ? "…" : "");
+}
+function sqRows(r){
+  if(!r.q) return '<div class="sqhint">일정 제목, 기록 내용, 프로젝트 · 습관 이름을 한 번에 찾습니다.</div>';
+  const total = r.items.length + r.notes.length + r.prjs.length + r.habits.length;
+  if(!total) return '<div class="sqhint">찾는 내용이 없습니다.</div>';
+  let h = "";
+  const sec = (label, n) => '<div class="sqsec">' + label + '<i>' + n + '</i></div>';
+  const more = (n, cap) => n > cap ? '<div class="sqmore">그 밖에 ' + (n - cap) + '건</div>' : '';
+
+  if(r.items.length){
+    h += sec("예정일정", r.items.length);
+    h += r.items.slice(0, SQ_CAP).map(({k, it}) =>
+      '<button class="sqrow ' + it.status + '" data-go="day" data-k="' + k + '">'
+      + '<span class="sqk">' + shortKo(k) + ' ' + DOW[fromKey(k).getDay()] + '</span>'
+      + '<span class="tag ' + catCls(it.cat) + '">' + it.cat + '</span>'
+      + '<span class="sqt">' + hilite(it.title, r.q) + '</span>'
+      + '<span class="sqm">' + (it.allDay ? "종일" : it.start + "–" + it.end)
+      + (it.status === "done" ? " · 완료" : it.status === "moved" ? " · 연기" : "") + '</span></button>').join("");
+    h += more(r.items.length, SQ_CAP);
+  }
+  if(r.notes.length){
+    h += sec("기록", r.notes.length);
+    h += r.notes.slice(0, SQ_CAP).map(({k, n}) =>
+      '<button class="sqrow" data-go="day" data-k="' + k + '">'
+      + '<span class="sqk">' + shortKo(k) + ' ' + DOW[fromKey(k).getDay()] + '</span>'
+      + '<span class="tag ' + catCls(n.cat) + '">' + n.cat + '</span>'
+      + '<span class="sqt">' + sqSnip(n.text, r.q, 74) + '</span>'
+      + '<span class="sqm">' + esc(n.kind) + '</span></button>').join("");
+    h += more(r.notes.length, SQ_CAP);
+  }
+  if(r.prjs.length){
+    h += sec("프로젝트", r.prjs.length);
+    h += r.prjs.slice(0, SQ_CAP).map(nm => {
+      const p = findProject(nm) || {cat:"업무"}, st = projectStats(nm);
+      return '<button class="sqrow ' + prjClass(nm) + '" data-go="prj" data-p="' + esc(nm) + '">'
+        + '<span class="sqk"><i class="gdot"></i></span>'
+        + '<span class="tag ' + catCls(p.cat) + '">' + p.cat + '</span>'
+        + '<span class="sqt">' + hilite(nm, r.q) + '</span>'
+        + '<span class="sqm">' + (st.first ? shortKo(st.first) + "–" + shortKo(st.last) : "아직 없음")
+        + ' · ' + st.items.length + '건</span></button>';
+    }).join("");
+  }
+  if(r.habits.length){
+    h += sec("습관", r.habits.length);
+    h += r.habits.map(x =>
+      '<button class="sqrow" data-go="habit"><span class="sqk"></span>'
+      + '<span class="sqt">' + hilite(x.name, r.q) + '</span>'
+      + '<span class="sqm">' + (x.fields && x.fields.length ? "수치 " + x.fields.length + "칸" : "예 / 아니오")
+      + '</span></button>').join("");
+  }
+  return h;
+}
+function openSearch(){
+  if($("scrim")) return;
+  const scrim = document.createElement("div");
+  scrim.className = "scrim sqscrim"; scrim.id = "scrim";
+  scrim.innerHTML = '<div class="modal search" role="dialog" aria-modal="true" aria-label="검색">'
+    + '<div class="sqhead"><span class="sqicon">' + SVG_SEARCH + '</span>'
+    + '<input type="text" class="sqinput" id="sq" autocomplete="off" spellcheck="false"'
+    + ' placeholder="일정 · 기록 · 프로젝트 검색" value="' + esc(S.view.sq || "") + '">'
+    + '<button class="sqx" id="sq-close" aria-label="닫기">' + SVG_X + '</button></div>'
+    + '<div class="sqbody" id="sqbody"></div>'
+    + '<div class="sqfoot"><kbd>&#8593;</kbd><kbd>&#8595;</kbd> 이동 · <kbd>Enter</kbd> 열기 · <kbd>Esc</kbd> 닫기</div></div>';
+  const close = () => { scrim.remove(); document.removeEventListener("keydown", onKey, true); };
+  let sel = -1;
+  const rowsOf = () => Array.from(scrim.querySelectorAll(".sqrow"));
+  const mark = () => {
+    const rows = rowsOf();
+    rows.forEach((el, i) => el.classList.toggle("on", i === sel));
+    if(sel >= 0 && rows[sel]) rows[sel].scrollIntoView({block:"nearest"});
+  };
+  const go = el => {
+    const g = el.dataset.go;
+    close();
+    if(g === "day") select(el.dataset.k, "day");
+    else if(g === "prj"){ S.view.prj = el.dataset.p; setMode("prj"); }
+    else if(g === "habit") setMode("habit");
+  };
+  const draw = () => {
+    const q = scrim.querySelector("#sq").value;
+    S.view.sq = q;
+    scrim.querySelector("#sqbody").innerHTML = sqRows(searchAll(q));
+    sel = -1;
+    rowsOf().forEach(el => {
+      el.onclick = () => go(el);
+      el.onmouseenter = () => { sel = rowsOf().indexOf(el); mark(); };
+    });
+  };
+  const onKey = e => {
+    if(e.key === "Escape"){ e.stopPropagation(); close(); return; }
+    const rows = rowsOf();
+    if(e.key === "ArrowDown"){ e.preventDefault(); if(rows.length){ sel = (sel + 1) % rows.length; mark(); } }
+    else if(e.key === "ArrowUp"){ e.preventDefault(); if(rows.length){ sel = (sel - 1 + rows.length) % rows.length; mark(); } }
+    else if(e.key === "Enter" && !composing(e)){
+      e.preventDefault();
+      const t = rows[sel < 0 ? 0 : sel];
+      if(t) go(t);
+    }
+  };
+  scrim.querySelector("#sq-close").onclick = close;
+  const openedAt = Date.now();
+  scrim.onclick = e => { if(e.target === scrim && Date.now() - openedAt > 250) close(); };
+  document.addEventListener("keydown", onKey, true);
+  document.body.appendChild(scrim);
+  const inp = scrim.querySelector("#sq");
+  let t = null;
+  inp.oninput = () => { clearTimeout(t); t = setTimeout(draw, 130); };
+  draw();
+  inp.focus(); inp.select();
+}
+
+
 /* ═══════════ 이동 / 전역 ═══════════ */
 function select(k, mode){
   S.view.selected = k; S.view.month = k.slice(0,7);
@@ -3812,6 +4007,12 @@ document.addEventListener("keydown", e => {
   else if(e.key === "n" || e.key === "N"){ setMode("note"); }
   else if(e.key === "p" || e.key === "P"){ setMode("prj"); }
   else if(e.key === "h" || e.key === "H"){ setMode("habit"); }
+  else if(e.key === "/"){ e.preventDefault(); openSearch(); }
+});
+document.addEventListener("keydown", e => {
+  if((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")){
+    e.preventDefault(); if(!$("scrim")) openSearch();
+  }
 });
 let lastW = innerWidth, reflowT = null;
 addEventListener("resize", () => {
@@ -4493,6 +4694,9 @@ async function bootData(){
   loadSync();
   render();
   $("syncbtn").onclick = openSyncModal;
+  const sb = $("searchbtn");
+  sb.innerHTML = SVG_SEARCH;
+  sb.onclick = openSearch;
   if(sync.on){
     syncPull(true);
     document.addEventListener("visibilitychange", () => {
