@@ -101,90 +101,7 @@ input,textarea,select{font:inherit; color:inherit}
 .tabs button{padding:7px 15px 8px; font-size:14px; color:var(--ink-3); letter-spacing:-.01em;
   border-bottom:2px solid transparent; transition:color .15s,border-color .15s; white-space:nowrap;
   flex:none}
-@media (max-width:560px){
-  .wrap{padding:10px 12px 44px}
-  .tabs button{padding:7px 11px 8px; font-size:13.5px}
-  .tabbar{gap:8px; margin-bottom:8px}
-  .savebox{font-size:11.5px; gap:7px; padding-bottom:4px}
 
-  /* 날짜 머리 */
-  .pagehead{gap:9px; padding:2px 2px 10px}
-  .phmain{gap:10px}
-  .bignum{font-size:30px}
-  .bignum em{font-size:11px}
-  .pagemeta b{font-size:14.5px; white-space:nowrap}
-  .pagemeta span{font-size:10.5px; white-space:nowrap}
-  .todaybtn{padding:4px 10px; font-size:11px}
-
-  /* 패널 */
-  .ph{padding:8px 12px 7px}
-  .ph h3{font-size:11px; letter-spacing:.1em}
-  .ph .hint2{display:none}
-  .panel{border-radius:9px}
-
-  /* 예정일정 */
-  .tghours{width:44px}
-  .tghour b{font-size:11.5px}
-  .tghour .ap{font-size:8px}
-  .tgitem{font-size:12px; padding:2px 6px 2px 8px}
-  .tgitem b{font-size:9.5px}
-  .tgfoot{padding:7px 10px}
-
-  /* 오늘의 습관 */
-  .hbrows{padding:9px 11px 10px}
-  .hbline .hbtog{min-width:0}
-  .mval{width:58px}
-
-  /* 기록사항 */
-  .ntform{padding:9px 11px 11px}
-  .kindpick button{padding:3px 8px; font-size:11px}
-  .ntcard{padding:11px 12px 12px}
-  .nttext{font-size:14px}
-
-  /* 주간 리스트 */
-  .wlrow{padding:7px 11px; font-size:13px; flex-wrap:wrap}
-  .wltime{width:74px}
-  .wlday{padding:7px 11px}
-  .wkmeta{padding:8px 11px; gap:8px}
-  .segbar{padding:7px 11px; gap:6px}
-  .seg2 button{padding:4px 10px; font-size:11.5px}
-
-  /* 월간 */
-  .cell{min-height:64px; padding:4px 4px 3px}
-  .cell .n{font-size:12px}
-  .ctop{height:16px; gap:3px}
-  .calbars{top:19px; grid-auto-rows:15px; gap:1px 0}
-  .calbar{height:13px; line-height:11px; font-size:9.5px; padding:0 4px; margin:0 1px;
-    border-left-width:2px}
-  .dow div{padding:6px 0; font-size:10px; letter-spacing:.04em}
-  .holname{display:none}
-
-  /* 프로젝트 · 습관 */
-  .gnm{width:96px} .gwide .gnm{width:104px} .gwide .gsub .gnm{width:104px}
-  .gspan,.gwide .gspan{width:76px; font-size:9.5px}
-  .gwide .gticks .gnm{width:104px} .gwide .gticks .gspan{width:76px}
-  .gact{width:60px}
-  .hbcard{padding:10px 12px 12px}
-  .hbstats{gap:8px; font-size:11px}
-  .hbform{padding:10px 12px 12px}
-  .hbform input[type="text"]{width:100%}
-  .hbfrow{gap:6px}
-  .hblbl{width:56px}
-
-  /* 창 */
-  .scrim{padding:12px}
-  .mdbody{padding:13px 14px}
-  .mdhead{padding:12px 14px 10px}
-  .mdfoot{padding:11px 14px 13px}
-  .gatecard{border-radius:13px}
-  .gatetop{padding:22px 20px 16px}
-  .gatebody{padding:18px 20px 20px}
-}
-@media (max-width:400px){
-  .tabs button{padding:7px 8px 8px; font-size:13px}
-  .bignum{font-size:27px}
-  .pagemeta b{font-size:13.5px}
-}
 html,body{max-width:100%; overflow-x:hidden}
 .tabs button:hover{color:var(--ink-2)}
 .tabs button[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent); font-weight:500}
@@ -961,6 +878,92 @@ html,body{max-width:100%; overflow-x:hidden}
   opacity:0; pointer-events:none; transition:opacity .2s,transform .2s; z-index:80; max-width:88vw}
 .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+
+/* ══════ 작은 화면 ══════ */
+@media (max-width:560px){
+  .wrap{padding:10px 12px 44px}
+  .tabs button{padding:7px 11px 8px; font-size:13.5px}
+  .tabbar{gap:8px; margin-bottom:8px}
+  .savebox{font-size:11.5px; gap:7px; padding-bottom:4px}
+
+  /* 날짜 머리 */
+  .pagehead{gap:9px; padding:2px 2px 10px}
+  .phmain{gap:10px}
+  .bignum{font-size:30px}
+  .bignum em{font-size:11px}
+  .pagemeta b{font-size:14.5px; white-space:nowrap}
+  .pagemeta span{font-size:10.5px; white-space:nowrap}
+  .todaybtn{padding:4px 10px; font-size:11px}
+
+  /* 패널 */
+  .ph{padding:8px 12px 7px}
+  .ph h3{font-size:11px; letter-spacing:.1em}
+  .ph .hint2{display:none}
+  .panel{border-radius:9px}
+
+  /* 예정일정 */
+  .tghours{width:44px}
+  .tghour b{font-size:11.5px}
+  .tghour .ap{font-size:8px}
+  .tgitem{font-size:12px; padding:2px 6px 2px 8px}
+  .tgitem b{font-size:9.5px}
+  .tgfoot{padding:7px 10px}
+
+  /* 오늘의 습관 */
+  .hbrows{padding:9px 11px 10px}
+  .hbline .hbtog{min-width:0}
+  .mval{width:58px}
+
+  /* 기록사항 */
+  .ntform{padding:9px 11px 11px}
+  .kindpick button{padding:3px 8px; font-size:11px}
+  .ntcard{padding:11px 12px 12px}
+  .nttext{font-size:14px}
+
+  /* 주간 리스트 */
+  .wlrow{padding:7px 11px; font-size:13px; flex-wrap:wrap}
+  .wltime{width:74px}
+  .wlday{padding:7px 11px}
+  .wkmeta{padding:8px 11px; gap:8px}
+  .segbar{padding:7px 11px; gap:6px}
+  .seg2 button{padding:4px 10px; font-size:11.5px}
+
+  /* 월간 */
+  .cell{min-height:64px; padding:4px 4px 3px}
+  .cell .n{font-size:12px}
+  .ctop{height:16px; gap:3px}
+  .calbars{top:19px; grid-auto-rows:15px; gap:1px 0}
+  .calbar{height:13px; line-height:11px; font-size:9.5px; padding:0 4px; margin:0 1px;
+    border-left-width:2px}
+  .dow div{padding:6px 0; font-size:10px; letter-spacing:.04em}
+  .holname{display:none}
+
+  /* 프로젝트 · 습관 */
+  .gnm{width:96px} .gwide .gnm{width:104px} .gwide .gsub .gnm{width:104px}
+  .gspan,.gwide .gspan{width:76px; font-size:9.5px}
+  .gwide .gticks .gnm{width:104px} .gwide .gticks .gspan{width:76px}
+  .gact{width:60px}
+  .hbcard{padding:10px 12px 12px}
+  .hbstats{gap:8px; font-size:11px}
+  .hbform{padding:10px 12px 12px}
+  .hbform input[type="text"]{width:100%}
+  .hbfrow{gap:6px}
+  .hblbl{width:56px}
+
+  /* 창 */
+  .scrim{padding:12px}
+  .mdbody{padding:13px 14px}
+  .mdhead{padding:12px 14px 10px}
+  .mdfoot{padding:11px 14px 13px}
+  .gatecard{border-radius:13px}
+  .gatetop{padding:22px 20px 16px}
+  .gatebody{padding:18px 20px 20px}
+}
+@media (max-width:400px){
+  .tabs button{padding:7px 8px 8px; font-size:13px}
+  .bignum{font-size:27px}
+  .pagemeta b{font-size:13.5px}
+}
 </style>
 
 <div class="gate" id="gate">
