@@ -3549,7 +3549,7 @@ function bindTimeFields(root){
     let idx = -1;
     const paint = () => {
       menu.innerHTML = opts.map((t,i) => {
-        const hp = hourParts(Number(t.slice(0,2)));
+        const hp = hourLabel(Number(t.slice(0,2)));
         return '<button type="button" class="topt' + (i === idx ? " on" : "")
           + (t === inp.value ? " cur" : "") + '" data-t="' + t + '">'
           + '<span class="tap">' + hp.ap + '</span><b>' + hp.n + ':' + t.slice(3) + '</b></button>';
