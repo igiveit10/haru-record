@@ -290,9 +290,9 @@ input,textarea,select{font:inherit; color:inherit}
   color:var(--ink-3); transition:all .15s; white-space:nowrap}
 .kindpick button:hover{border-color:var(--accent); color:var(--accent-ink)}
 .kindpick button[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--paper)}
-.ntform textarea{width:100%; min-height:74px; resize:vertical; background:var(--card);
-  border:1px solid var(--line); border-radius:8px; padding:9px 11px; font-family:var(--serif);
-  font-size:14.5px; line-height:1.8}
+.ntform textarea{width:100%; min-height:156px; max-height:460px; resize:vertical;
+  background:var(--card); border:1px solid var(--line); border-radius:8px; padding:11px 13px;
+  font-family:var(--serif); font-size:14.5px; line-height:1.85; overflow-y:auto}
 .ntform textarea:focus{outline:none; border-color:var(--accent)}
 .ntactions{display:flex; align-items:center; gap:8px}
 .ntactions .sp{flex:1}
@@ -318,9 +318,9 @@ input,textarea,select{font:inherit; color:inherit}
 .ntempty{padding:24px 14px; text-align:center}
 .ntcard.editing{background:var(--card-2); box-shadow:inset 2px 0 0 var(--accent)}
 .ntedit{display:flex; flex-direction:column; gap:8px}
-.ntedit textarea{width:100%; min-height:82px; resize:vertical; background:var(--card);
-  border:1px solid var(--line); border-radius:8px; padding:9px 11px; font-family:var(--serif);
-  font-size:14.5px; line-height:1.8}
+.ntedit textarea{width:100%; min-height:150px; max-height:460px; resize:vertical;
+  background:var(--card); border:1px solid var(--line); border-radius:8px; padding:11px 13px;
+  font-family:var(--serif); font-size:14.5px; line-height:1.85; overflow-y:auto}
 .ntedit textarea:focus{outline:none; border-color:var(--accent)}
 .ntbtns{display:flex; align-items:center; gap:8px}
 .ntbtns .sp{flex:1}
@@ -1807,6 +1807,15 @@ function openItemModal(dateKey, ok, id, preset){
 }
 
 /* ═══════════ 기록사항 ═══════════ */
+function autoGrow(ta, min){
+  if(!ta) return;
+  const fit = () => {
+    ta.style.height = "auto";
+    ta.style.height = Math.max(min, Math.min(460, ta.scrollHeight + 2)) + "px";
+  };
+  ta.addEventListener("input", fit);
+  fit();
+}
 function bindNoteForm(k){
   const view = $("view");
   const ta = $("nt-text");
@@ -1814,6 +1823,7 @@ function bindNoteForm(k){
   ta.oninput = () => { noteDraft.text = ta.value; };
   const acN = attachProjectAC(ta, () => noteDraft.cat);
   ta.onkeydown = e => { acN.key(e); };
+  autoGrow(ta, 156);
   view.querySelectorAll("#nt-cat button").forEach(b => b.onclick = () => {
     noteDraft.cat = b.dataset.c;
     view.querySelectorAll("#nt-cat button").forEach(x =>
@@ -1884,6 +1894,7 @@ function bindNoteForm(k){
     if(te){
       te.value = noteEdit.text || "";
       te.oninput = () => { noteEdit.text = te.value; };
+      autoGrow(te, 150);
       const acE = attachProjectAC(te, () => noteEdit.cat);
       te.onkeydown = e => {
         if(acE.key(e)) return;
