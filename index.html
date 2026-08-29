@@ -183,12 +183,11 @@ input,textarea,select{font:inherit; color:inherit}
 .tfield{position:relative; display:inline-block; flex:none}
 .tinput{width:100%; font-family:var(--mono); font-size:13px; text-align:center;
   font-variant-numeric:tabular-nums; letter-spacing:.02em}
-.tmenu{position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:95; background:var(--card);
-  border:1px solid var(--line); border-radius:9px; box-shadow:var(--pop); padding:4px;
-  max-height:212px; overflow-y:auto; display:block}
-.tmenu[hidden]{display:none}
-.topt{display:flex; align-items:baseline; gap:6px; width:100%; padding:4px 9px; border-radius:6px;
-  font-family:var(--mono); font-size:12.5px; color:var(--ink-2); font-variant-numeric:tabular-nums}
+.tmenu{position:fixed; z-index:120; background:var(--card); border:1px solid var(--line);
+  border-radius:10px; box-shadow:var(--pop); padding:5px; overflow-y:auto;
+  -webkit-overflow-scrolling:touch}
+.topt{display:flex; align-items:baseline; gap:7px; width:100%; padding:6px 10px; border-radius:7px;
+  font-family:var(--mono); font-size:13px; color:var(--ink-2); font-variant-numeric:tabular-nums}
 .topt .tap{font-family:var(--sans); font-size:9.5px; color:var(--ink-3); width:20px; flex:none}
 .topt b{font-weight:500}
 .topt:hover,.topt.on{background:var(--card-2)}
@@ -3536,41 +3535,71 @@ function normTime(v){
 function timeField(id, value, width){
   return '<span class="tfield" style="width:' + (width || 92) + 'px">'
     + '<input type="text" class="f tinput" id="' + id + '" value="' + esc(value || "")
-    + '" placeholder="--:--" inputmode="numeric" maxlength="5" autocomplete="off">'
-    + '<span class="tmenu" hidden></span></span>';
+    + '" placeholder="--:--" inputmode="numeric" maxlength="5" autocomplete="off"></span>';
 }
 function bindTimeFields(root){
   root.querySelectorAll(".tfield").forEach(fld => {
     if(fld._wired) return;
     fld._wired = true;
-    const inp = fld.querySelector(".tinput"), menu = fld.querySelector(".tmenu");
+    const inp = fld.querySelector(".tinput");
     const opts = [];
     for(let m = 0; m < 24 * 60; m += 15) opts.push(toHM(m));
-    let idx = -1;
+    let menu = null, idx = -1;
+
+    const place = () => {
+      if(!menu) return;
+      const r = inp.getBoundingClientRect();
+      const below = innerHeight - r.bottom - 12, above = r.top - 12;
+      const up = below < 190 && above > below;
+      const h = Math.min(300, Math.max(150, up ? above : below));
+      const w = Math.max(r.width, 124);
+      menu.style.width = w + "px";
+      menu.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+      menu.style.maxHeight = h + "px";
+      if(up){ menu.style.top = "auto"; menu.style.bottom = (innerHeight - r.top + 6) + "px"; }
+      else { menu.style.bottom = "auto"; menu.style.top = (r.bottom + 6) + "px"; }
+    };
     const paint = () => {
+      if(!menu) return;
+      const cur = normTime(inp.value);
       menu.innerHTML = opts.map((t,i) => {
         const hp = hourLabel(Number(t.slice(0,2)));
         return '<button type="button" class="topt' + (i === idx ? " on" : "")
-          + (t === inp.value ? " cur" : "") + '" data-t="' + t + '">'
+          + (t === cur ? " cur" : "") + '" data-t="' + t + '">'
           + '<span class="tap">' + hp.ap + '</span><b>' + hp.n + ':' + t.slice(3) + '</b></button>';
       }).join("");
-      menu.querySelectorAll(".topt").forEach(b => {
-        b.onmousedown = e => { e.preventDefault(); pick(b.dataset.t); };
+      menu.querySelectorAll(".topt").forEach(b2 => {
+        b2.onmousedown = e => { e.preventDefault(); pick(b2.dataset.t); };
       });
     };
+    const onScroll = () => place();
+    const onDown = e => { if(menu && !menu.contains(e.target) && e.target !== inp) close(); };
     const open = () => {
-      if(!menu.hidden) return;
+      if(menu) return;
+      menu = document.createElement("div");
+      menu.className = "tmenu";
+      document.body.appendChild(menu);
       idx = Math.max(0, opts.indexOf(normTime(inp.value)));
-      menu.hidden = false; paint();
+      paint(); place();
       const cur = menu.querySelector(".topt.cur") || menu.children[idx];
-      if(cur) menu.scrollTop = Math.max(0, cur.offsetTop - 68);
+      if(cur) menu.scrollTop = Math.max(0, cur.offsetTop - 90);
+      addEventListener("scroll", onScroll, true);
+      addEventListener("resize", place);
+      addEventListener("pointerdown", onDown, true);
     };
-    const close = () => { menu.hidden = true; idx = -1; };
+    const close = () => {
+      if(!menu) return;
+      menu.remove(); menu = null; idx = -1;
+      removeEventListener("scroll", onScroll, true);
+      removeEventListener("resize", place);
+      removeEventListener("pointerdown", onDown, true);
+    };
     const pick = t => { inp.value = t; close(); inp.dispatchEvent(new Event("change", {bubbles:true})); };
+
     inp.onfocus = open;
     inp.onclick = open;
     inp.oninput = () => {
-      if(menu.hidden) return;
+      if(!menu) return;
       idx = opts.indexOf(normTime(inp.value));
       paint();
       if(idx >= 0 && menu.children[idx]) menu.children[idx].scrollIntoView({block:"nearest"});
@@ -3580,16 +3609,16 @@ function bindTimeFields(root){
       if(composing(e)) return;
       if(e.key === "ArrowDown" || e.key === "ArrowUp"){
         e.preventDefault();
-        if(menu.hidden){ open(); return; }
+        if(!menu){ open(); return; }
         idx = Math.min(opts.length - 1, Math.max(0, idx + (e.key === "ArrowDown" ? 1 : -1)));
         paint();
         const el = menu.children[idx];
         if(el) el.scrollIntoView({block:"nearest"});
       } else if(e.key === "Enter"){
-        if(!menu.hidden && idx >= 0){ e.preventDefault(); e.stopPropagation(); pick(opts[idx]); }
+        if(menu && idx >= 0){ e.preventDefault(); e.stopPropagation(); pick(opts[idx]); }
         else { inp.value = normTime(inp.value); close(); }
       } else if(e.key === "Escape"){
-        if(!menu.hidden){ e.stopPropagation(); close(); }
+        if(menu){ e.stopPropagation(); close(); }
       }
     };
   });
