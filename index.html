@@ -416,6 +416,10 @@ html,body{max-width:100%; overflow-x:hidden}
 .wtgd.s6 i,.wtgd.s6 b{color:var(--sat)}
 .wtgd.today b{background:var(--accent); color:var(--on-accent); border-radius:99px; padding:0 6px}
 .wtgd.sel{background:var(--accent-soft)}
+.wtgdots{display:flex; gap:2px; height:4px; margin-top:2px; text-decoration:none}
+.wtgdots s{width:3px; height:3px; border-radius:99px; background:var(--ink-3); opacity:.5;
+  text-decoration:none; display:block}
+.wtgd.today .wtgdots s{background:var(--accent); opacity:.85}
 .wtgall{display:grid; grid-template-columns:46px repeat(7,minmax(0,1fr));
   border-bottom:1px solid var(--line); background:var(--card-2); min-height:26px}
 .wtgall > .lb{font-size:9.5px; letter-spacing:.08em; color:var(--ink-3); padding:5px 6px 0 0;
@@ -450,6 +454,14 @@ html,body{max-width:100%; overflow-x:hidden}
 .wtgitem.dragging{cursor:grabbing; z-index:9; box-shadow:var(--pop); opacity:.92}
 .wtgnow{position:absolute; left:0; right:0; height:1px; background:var(--sun); z-index:3; pointer-events:none}
 
+.wksum{display:flex; gap:0; padding:9px 13px 10px; background:var(--card-2);
+  border-bottom:1px solid var(--line); flex-wrap:wrap}
+.wkst{flex:1 1 0; min-width:52px; display:flex; flex-direction:column; align-items:center; gap:1px;
+  border-left:1px solid var(--line-2)}
+.wkst:first-child{border-left:0}
+.wkst b{font-family:var(--mono); font-size:16px; font-weight:600; color:var(--ink);
+  font-variant-numeric:tabular-nums; line-height:1.2}
+.wkst span{font-size:10px; letter-spacing:.06em; color:var(--ink-3)}
 .wlist{display:flex; flex-direction:column}
 .wlday{display:flex; align-items:baseline; gap:9px; padding:7px 13px; background:var(--card-2);
   border-bottom:1px solid var(--line); border-top:1px solid var(--line-2)}
@@ -468,6 +480,8 @@ html,body{max-width:100%; overflow-x:hidden}
 .wlrow.done .txt{color:var(--ink-3); text-decoration:line-through}
 .wlrow.moved .txt,.wlrow.deleted .txt{color:var(--ink-3); opacity:.7}
 .wlnone{padding:8px 13px; border-bottom:1px solid var(--rule)}
+.wlday.nil{background:transparent; padding:5px 13px; border-bottom:1px solid var(--rule)}
+.wlday.nil b,.wlday.nil i,.wlday.nil em{font-size:10.5px; color:var(--ink-3); opacity:.75}
 
 /* ── 프로젝트 자동완성 ── */
 .acwrap{position:relative; display:block}
@@ -666,6 +680,9 @@ html,body{max-width:100%; overflow-x:hidden}
   border-right:4px solid transparent; border-top:5px solid var(--pc)}
 .gspan em{font-style:normal; display:block; font-size:9.5px; color:var(--ink-3); opacity:.9}
 .gspan em.late{color:var(--sun); opacity:1}
+.gcnt{flex:none; font-style:normal; font-family:var(--mono); font-size:10px; color:var(--ink-3);
+  background:var(--line-2); border-radius:99px; padding:1px 6px; font-variant-numeric:tabular-nums}
+.gcnt.full{background:var(--accent-soft); color:var(--accent-ink)}
 .gnmtxt{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; cursor:pointer}
 .gnmtxt:hover{color:var(--accent-ink); text-decoration:underline; text-underline-offset:2px}
 .gchev{flex:none; font-size:9px; color:var(--ink-3); width:9px; display:inline-block;
@@ -871,6 +888,7 @@ html,body{max-width:100%; overflow-x:hidden}
   text-align:right; font-variant-numeric:tabular-nums}
 
 .hint{margin-top:15px; font-size:11.5px; color:var(--ink-3); line-height:1.75}
+.touchhint{display:none}
 .hint kbd{font-family:var(--mono); font-size:10.5px; border:1px solid var(--line); border-radius:4px;
   padding:1px 5px; background:var(--card)}
 .toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(8px);
@@ -920,13 +938,21 @@ html,body{max-width:100%; overflow-x:hidden}
   .ntcard{padding:11px 12px 12px}
   .nttext{font-size:14px}
 
-  /* 주간 리스트 */
-  .wlrow{padding:7px 11px; font-size:13px; flex-wrap:wrap}
-  .wltime{width:74px}
+  /* 주간 */
+  .wlrow{padding:8px 11px; font-size:13.5px; flex-wrap:wrap; gap:6px}
+  .wltime{width:70px; font-size:10.5px}
   .wlday{padding:7px 11px}
+  .wlday.nil{padding:4px 11px}
   .wkmeta{padding:8px 11px; gap:8px}
   .segbar{padding:7px 11px; gap:6px}
-  .seg2 button{padding:4px 10px; font-size:11.5px}
+  .segbar .sp{display:none}
+  .seg2 button{padding:5px 11px; font-size:12px}
+  .wksum{padding:9px 8px 10px}
+  .wkst{min-width:44px}
+  .wkst b{font-size:17px}
+  .wkrow{grid-template-columns:66px repeat(7,minmax(0,1fr))}
+  .wklb{font-size:11px}
+  #pj-name{flex:1 1 130px; width:auto !important; min-width:0}
 
   /* 월간 */
   .cell{min-height:64px; padding:4px 4px 3px}
@@ -939,16 +965,30 @@ html,body{max-width:100%; overflow-x:hidden}
   .holname{display:none}
 
   /* 프로젝트 · 습관 */
-  .gnm{width:96px} .gwide .gnm{width:104px} .gwide .gsub .gnm{width:104px}
-  .gspan,.gwide .gspan{width:76px; font-size:9.5px}
-  .gwide .gticks .gnm{width:104px} .gwide .gticks .gspan{width:76px}
-  .gact{width:60px}
+  .gantt{padding:10px 11px 12px; gap:11px}
+  .gantt .gticks{display:none}
+  .gantt .gline{flex-wrap:wrap; gap:5px 8px; padding:3px; margin:0}
+  .gantt .gline .gnm{width:auto; flex:1 1 auto; min-width:0; font-size:13.5px; color:var(--ink)}
+  .gantt .gline .gspan{width:auto; flex:none; font-size:10px; text-align:right}
+  .gantt .gline .gact{width:auto; opacity:1; gap:2px}
+  .gantt .gline .gtrack{flex:1 0 100%; height:10px; order:9}
+  .gantt .gsub{gap:8px; padding:3px; margin:0}
+  .gantt .gsub .gnm{width:auto; flex:1 1 auto; min-width:0; padding-left:13px; font-size:12.5px}
+  .gantt .gsub .gtrack{display:none}
+  .gantt .gsub .gspan{width:auto; flex:none; font-size:10px}
+  .gantt .gact.ghost{display:none}
+  .gantt .gmore{padding-left:16px; font-size:11px}
+  .ggroup{gap:5px; padding-bottom:7px}
   .hbcard{padding:10px 12px 12px}
   .hbstats{gap:8px; font-size:11px}
   .hbform{padding:10px 12px 12px}
   .hbform input[type="text"]{width:100%}
   .hbfrow{gap:6px}
   .hblbl{width:56px}
+
+  /* 도움말 */
+  .kbdhint{display:none}
+  .touchhint{display:block}
 
   /* 창 */
   .scrim{padding:12px}
@@ -1010,12 +1050,17 @@ html,body{max-width:100%; overflow-x:hidden}
 
   <div id="view"></div>
 
-  <p class="hint">
+  <p class="hint kbdhint">
     <kbd>←</kbd> <kbd>→</kbd> 이동 · <kbd>T</kbd> 오늘 · <kbd>D</kbd> <kbd>W</kbd> <kbd>M</kbd> <kbd>N</kbd> <kbd>P</kbd> <kbd>H</kbd> 탭 이동 ·
     제목이나 기록에 <kbd>[</kbd> 를 치면 프로젝트가 자동완성됩니다<br>
     예정일정은 빈 곳을 <b>클릭</b>해 추가하고, 항목을 <b>끌어서</b> 시간을 옮기고, <b>더블클릭</b>으로 고치고,
     <b>우클릭</b>으로 완료·연기·삭제합니다. 변경은 이 브라우저에 바로 저장되며,
     <b>보관하기</b>를 눌러야 페이지에 남아 다른 기기에서도 보입니다.
+  </p>
+  <p class="hint touchhint">
+    예정일정은 빈 곳을 <b>눌러</b> 추가하고, 항목을 <b>길게 눌러</b> 끌면 시간이 옮겨집니다.
+    항목을 <b>길게 누르면</b> 완료·연기·삭제를 고를 수 있습니다.
+    변경은 이 브라우저에 바로 저장되며, <b>보관하기</b>를 눌러야 다른 기기에서도 보입니다.
   </p>
 </div>
 
@@ -2910,6 +2955,7 @@ function renderProjects(){
 
 /* ═══════════ 주간 ═══════════ */
 const PX_HW = 30;
+function isNarrow(){ return innerWidth < 560; }
 function wkCat(){ return S.view.wkCat || "전체"; }
 function wkView(){
   if(!S.view.wkViewSet && innerWidth < 640) return "list";
@@ -2930,13 +2976,13 @@ function renderWeekly(){
 
   /* 집계 */
   let evN = 0, mins = 0, ntN = 0, hbDone = 0, hbSlots = 0, movedN = 0, doneN = 0;
-  const perDayMin = {}, byGroup = {}, byCat = {"업무":0, "개인":0}, ntKind = {};
+  const perDayMin = {}, perDayCnt = {}, byGroup = {}, byCat = {"업무":0, "개인":0}, ntKind = {};
   days.forEach(dk => {
     perDayMin[dk] = 0;
     itemsOn(dk).forEach(o => {
       const it = o.it;
       if(!live(it) || o.span || !catOK(it)) return;
-      evN++;
+      evN++; perDayCnt[dk] = (perDayCnt[dk] || 0) + 1;
       if(it.status === "moved") movedN++;
       if(it.status === "done") doneN++;
       const d = durMin(it);
@@ -2960,8 +3006,13 @@ function renderWeekly(){
     if(hol) c.push("hol");
     if(dk === TODAY) c.push("today");
     if(dk === S.view.selected) c.push("sel");
-    head += '<button class="' + c.join(" ") + '" data-k="' + dk + '" title="' + esc(hol || labelKo(dk)) + '">'
-      + '<i>' + DOW[d.getDay()] + '</i><b>' + d.getDate() + '</b></button>';
+    const nOn = perDayCnt[dk] || 0;
+    if(nOn) c.push("has");
+    head += '<button class="' + c.join(" ") + '" data-k="' + dk + '" title="'
+      + esc((hol || labelKo(dk)) + (nOn ? " · 일정 " + nOn + "건" : "")) + '">'
+      + '<i>' + DOW[d.getDay()] + '</i><b>' + d.getDate() + '</b>'
+      + '<u class="wtgdots">' + Array.from({length: Math.min(nOn, 3)}, () => '<s></s>').join("") + '</u>'
+      + '</button>';
   });
   head += '</div>';
 
@@ -3023,10 +3074,10 @@ function renderWeekly(){
       const list = itemsOn(dk).filter(o => live(o.it) && catOK(o.it) && !o.span)
         .sort((a,b) => (a.it.allDay ? "" : a.it.start) < (b.it.allDay ? "" : b.it.start) ? -1 : 1);
       const dm = perDayMin[dk] || 0;
-      body += '<div class="wlday s' + d.getDay() + (hol ? " hol" : "") + '">'
+      body += '<div class="wlday s' + d.getDay() + (hol ? " hol" : "") + (list.length ? "" : " nil") + '">'
         + '<b>' + shortKo(dk) + '</b><i>' + DOW[d.getDay()] + (hol ? " · " + esc(hol) : "") + '</i>'
-        + '<span class="sp"></span><em>' + (list.length ? list.length + "건" : "") + (dm ? " · " + hm(dm) : "") + '</em></div>';
-      if(!list.length) body += '<div class="wlnone"><span class="empty">비어 있습니다.</span></div>';
+        + '<span class="sp"></span><em>'
+        + (list.length ? list.length + "건" + (dm ? " · " + hm(dm) : "") : "—") + '</em></div>';
       list.forEach(o => {
         const it = o.it;
         body += '<div class="wlrow ' + it.status + '" data-ok="' + o.ok + '" data-id="' + it.id + '">'
@@ -3063,6 +3114,7 @@ function renderWeekly(){
           }).join("") + '</div>').join("");
   }
 
+  const wkStat = (v, l) => '<div class="wkst"><b>' + v + '</b><span>' + l + '</span></div>';
   const seg = (id, opts, cur, extra) => '<div class="seg2" id="' + id + '">'
     + opts.map(o => '<button data-v="' + o[0] + '" class="' + (extra && o[0] === "개인" ? "cat-p" : "")
         + '" aria-pressed="' + (cur === o[0] ? "true" : "false") + '">' + o[1] + '</button>').join("") + '</div>';
@@ -3071,11 +3123,16 @@ function renderWeekly(){
       '<div class="panel"><div class="ph"><h3>주간 진행</h3><span class="sp"></span>'
     + '<span class="hint2">' + labelKo(days[0]) + ' – ' + labelKo(days[6]) + '</span></div>'
     + '<div class="segbar">'
-    + seg("wk-view", [["time","시간별로 보기"],["list","리스트로 보기"]], view)
+    + seg("wk-view", [["time", isNarrow() ? "시간별" : "시간별로 보기"],
+                      ["list", isNarrow() ? "리스트" : "리스트로 보기"]], view)
     + seg("wk-cat", [["전체","전체"],["업무","업무"],["개인","개인"]], fcat, true)
-    + '<span class="sp"></span>'
-    + '<span class="lbl">일정 ' + evN + ' · ' + hm(mins) + ' · 기록 ' + ntN + '건'
-    + (hbPct !== null ? ' · 습관 ' + hbPct + '%' : '') + '</span></div>'
+    + '</div>'
+    + '<div class="wksum">'
+    +   wkStat(evN, "일정") + wkStat(hm(mins) || "0", "시간")
+    +   wkStat(doneN + "/" + evN, "완료") + wkStat(ntN, "기록")
+    +   (hbPct !== null ? wkStat(hbPct + "%", "습관") : "")
+    +   (movedN ? wkStat(movedN, "연기") : "")
+    + '</div>'
     + head + body + hbRows + '</div>'
     + reviewPanel(days, {evN, mins, ntN, hbPct, movedN, doneN, perDayMin, byGroup, byCat, ntKind, hb});
 
@@ -3407,7 +3464,11 @@ function ganttBlock(rows, rFrom, rTo, opts){
         + (shut ? " collapsed" : "") + '">'
         + '<div class="gline" data-p="' + esc(r.name) + '">'
         + '<span class="gnm">' + (foldable ? '<i class="gchev">&#9656;</i>' : '')
-        + '<i class="gdot"></i><span class="gnmtxt">' + esc(r.name) + '</span></span>'
+        + '<i class="gdot"></i><span class="gnmtxt">' + esc(r.name) + '</span>'
+        + (opts.actions && r.st.items.length
+            ? '<em class="gcnt' + (r.st.done === r.st.items.length ? " full" : "") + '">'
+              + r.st.done + '/' + r.st.items.length + '</em>' : '')
+        + '</span>'
         + (r.st.first
             ? track(r.st.first, (r.due && r.due > r.st.last) ? r.due : r.st.last, null, r.due)
             : emptyTrack(r.due))
