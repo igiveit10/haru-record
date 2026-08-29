@@ -64,6 +64,33 @@ input,textarea,select{font:inherit; color:inherit}
 .wrap{max-width:1280px; margin:0 auto; padding:14px 18px 52px}
 .empty{font-size:12.5px; color:var(--ink-3); font-family:var(--serif)}
 
+/* ── 잠금 화면 ── */
+.gate{position:fixed; inset:0; z-index:100; background:var(--paper); display:grid;
+  place-items:center; padding:24px; overflow:auto}
+.gate[hidden]{display:none}
+.gatecard{width:min(420px,100%); background:var(--card); border:1px solid var(--line);
+  border-radius:16px; box-shadow:var(--shadow); overflow:hidden}
+.gatetop{padding:28px 26px 20px; border-bottom:1px solid var(--line-2); text-align:center}
+.gatetop h1{margin:0; font-family:var(--serif); font-size:26px; font-weight:700; letter-spacing:-.02em}
+.gatetop p{margin:7px 0 0; font-size:12.5px; color:var(--ink-3)}
+.gatebody{padding:22px 26px 24px; display:flex; flex-direction:column; gap:13px}
+.gatebody h2{margin:0; font-size:14px; font-weight:500; color:var(--ink-2)}
+.gatebody p{margin:0; font-size:12px; color:var(--ink-3); line-height:1.7}
+.gatebody .f{width:100%; padding:9px 12px; font-size:15px}
+.gatebody .btn{width:100%; padding:9px; font-size:14px; justify-content:center; text-align:center}
+.gaterow{display:flex; gap:8px}
+.gaterow .btn{flex:1}
+.gatemsg{font-size:12px; color:var(--sun); min-height:16px}
+.gatelink{background:none; border:0; padding:0; font-size:11.5px; color:var(--ink-3);
+  text-decoration:underline; text-underline-offset:2px; align-self:center}
+.gatelink:hover{color:var(--accent-ink)}
+.gatenote{background:var(--card-2); border:1px solid var(--line-2); border-radius:9px;
+  padding:11px 13px; font-size:11.5px; color:var(--ink-3); line-height:1.75}
+.gatenote b{color:var(--ink-2)}
+.gatechk{display:flex; align-items:flex-start; gap:8px; font-size:12.5px; color:var(--ink-2);
+  cursor:pointer; line-height:1.5}
+.gatechk input{margin-top:2px; width:15px; height:15px; accent-color:var(--accent); flex:none}
+
 /* ── 상단 ── */
 .tabbar{display:flex; align-items:flex-end; gap:16px; border-bottom:1px solid var(--line);
   margin-bottom:10px; flex-wrap:wrap}
@@ -834,7 +861,17 @@ input,textarea,select{font:inherit; color:inherit}
 @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
 </style>
 
-<div class="wrap">
+<div class="gate" id="gate">
+  <div class="gatecard">
+    <div class="gatetop">
+      <h1>하루 기록장</h1>
+      <p>일정 · 프로젝트 · 습관 · 기록을 한 곳에</p>
+    </div>
+    <div class="gatebody" id="gatebody"></div>
+  </div>
+</div>
+
+<div class="wrap" id="wrap" hidden>
   <div class="tabbar">
     <h1 class="brand">하루 기록장</h1>
     <div class="tabs" role="tablist">
@@ -1012,11 +1049,11 @@ function migrate(st){
   });
   return st;
 }
-function loadState(){
+async function loadState(){
   let embedded = blank();
-  try { embedded = Object.assign(blank(), JSON.parse($("app-state").textContent)); } catch(e){}
+  try { embedded = Object.assign(blank(), await decJSON($("app-state").textContent)); } catch(e){}
   let local = null;
-  try { const raw = localStorage.getItem(LS); if(raw) local = JSON.parse(raw); } catch(e){}
+  try { const raw = localStorage.getItem(LS); if(raw) local = await decJSON(raw); } catch(e){}
   if(local && (local.updatedAt||0) > (embedded.updatedAt||0)){ S = Object.assign(blank(), local); dirty = true; }
   else { S = embedded; }
   migrate(S);
@@ -1029,11 +1066,14 @@ function loadState(){
   if(["전체","업무","개인"].indexOf(S.view.wkCat) < 0) S.view.wkCat = "전체";
   if(["전체","업무","개인"].indexOf(S.view.prjCat) < 0) S.view.prjCat = "전체";
   if(["month","3m","6m","all"].indexOf(S.view.hbRange) < 0) S.view.hbRange = "month";
-  if(!dirty){ try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){} }
+  if(!dirty) await saveLocal();
+}
+async function saveLocal(){
+  try { localStorage.setItem(LS, await encJSON(S)); } catch(e){}
 }
 function touch(){
   S.updatedAt = Date.now(); dirty = true;
-  try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){}
+  saveLocal();
   renderSave();
   schedulePush();
 }
@@ -3461,6 +3501,174 @@ window.addEventListener("beforeunload", e => {
   if(dirty && artifactApi && !keeping){ e.preventDefault(); e.returnValue = ""; }
 });
 
+/* ═══════════ 잠금 · 암호화 ═══════════ */
+const LOCK_LS = "haru-lock-v1";
+const SUBTLE = (typeof crypto !== "undefined" && crypto.subtle) ? crypto.subtle : null;
+let lockCfg = null;      /* {salt, check} */
+let cryptoKey = null;    /* CryptoKey (열려 있을 때만) */
+
+const b64 = buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
+const ub64 = str => { const b = atob(str), a = new Uint8Array(b.length);
+  for(let i=0;i<b.length;i++) a[i] = b.charCodeAt(i); return a; };
+
+function loadLock(){
+  try { const raw = localStorage.getItem(LOCK_LS); lockCfg = raw ? JSON.parse(raw) : null; } catch(e){ lockCfg = null; }
+}
+function saveLock(){ try { localStorage.setItem(LOCK_LS, JSON.stringify(lockCfg)); } catch(e){} }
+
+async function deriveKey(pass, saltArr){
+  const base = await SUBTLE.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return SUBTLE.deriveKey({name:"PBKDF2", salt:saltArr, iterations:200000, hash:"SHA-256"},
+    base, {name:"AES-GCM", length:256}, true, ["encrypt","decrypt"]);
+}
+async function encJSON(obj){
+  if(!cryptoKey) return JSON.stringify(obj);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await SUBTLE.encrypt({name:"AES-GCM", iv}, cryptoKey,
+    new TextEncoder().encode(JSON.stringify(obj)));
+  return JSON.stringify({enc:1, iv:b64(iv), ct:b64(ct)});
+}
+async function decJSON(text){
+  const o = JSON.parse(text);
+  if(!o || !o.enc) return o;                      /* 평문(옛 데이터) */
+  if(!cryptoKey) throw new Error("잠겨 있습니다");
+  const pt = await SUBTLE.decrypt({name:"AES-GCM", iv:ub64(o.iv)}, cryptoKey, ub64(o.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function verifyKey(key){
+  try {
+    const prev = cryptoKey; cryptoKey = key;
+    const v = await decJSON(lockCfg.check);
+    cryptoKey = prev;
+    return v && v.ok === "haru";
+  } catch(e){ return false; }
+}
+
+/* ── 잠금 화면 ── */
+let gateBusy = false;
+function showApp(){
+  $("gate").hidden = true;
+  $("wrap").hidden = false;
+}
+function gate(html){
+  $("gate").hidden = false;
+  $("wrap").hidden = true;
+  $("gatebody").innerHTML = html;
+}
+function gateMsg(t){ const el = $("g-msg"); if(el) el.textContent = t || ""; }
+
+function gateUnsupported(){
+  gate('<h2>이 브라우저에서는 잠글 수 없습니다</h2>'
+    + '<p>암호화 기능(WebCrypto)을 쓸 수 없는 환경입니다. '
+    + '주소가 <b>https</b> 로 시작하는지 확인해 주세요.</p>'
+    + '<button class="btn" id="g-skip">잠금 없이 열기</button>');
+  $("g-skip").onclick = async () => { await bootData(); showApp(); };
+}
+
+function gateSetup(){
+  gate('<h2>비밀번호를 정해 주세요</h2>'
+    + '<p>이 비밀번호로 기록을 암호로 잠급니다. 비밀번호를 모르면 이 기기에서도, '
+    + '동기화 저장소에서도 내용을 읽을 수 없습니다.</p>'
+    + '<input type="password" class="f" id="g-p1" placeholder="비밀번호 (8자 이상)" autocomplete="new-password">'
+    + '<input type="password" class="f" id="g-p2" placeholder="한 번 더" autocomplete="new-password">'
+    + '<div class="gatenote">잠금을 켜면 <b>복구 키 파일</b>이 한 번 내려받아집니다. '
+    + '비밀번호를 잊었을 때 그 파일로만 되살릴 수 있으니, 이 기기 밖 안전한 곳에 보관해 두세요.</div>'
+    + '<label class="gatechk"><input type="checkbox" id="g-ack">복구 키 파일을 보관하겠습니다</label>'
+    + '<div class="gatemsg" id="g-msg"></div>'
+    + '<button class="btn primary" id="g-go">잠금 켜고 시작하기</button>'
+    + '<button class="gatelink" id="g-skip">잠금 없이 쓰기</button>');
+  const go = async () => {
+    if(gateBusy) return;
+    const p1 = $("g-p1").value, p2 = $("g-p2").value;
+    if(p1.length < 8){ gateMsg("비밀번호는 8자 이상으로 해주세요."); return; }
+    if(p1 !== p2){ gateMsg("두 번 입력한 비밀번호가 다릅니다."); return; }
+    if(!$("g-ack").checked){ gateMsg("복구 키 보관에 동의해 주세요."); return; }
+    gateBusy = true; gateMsg("잠그는 중…");
+    try {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const key = await deriveKey(p1, salt);
+      cryptoKey = key;
+      lockCfg = {salt:b64(salt), check: await encJSON({ok:"haru"})};
+      saveLock();
+      await bootData();          /* 기존 평문 데이터를 읽어 들이고 */
+      await saveLocal();         /* 암호문으로 다시 저장 */
+      await downloadRecovery(key);
+      showApp();
+    } catch(e){ gateMsg("실패했습니다: " + (e.message || e)); }
+    gateBusy = false;
+  };
+  $("g-go").onclick = go;
+  $("g-p2").onkeydown = e => { if(!composing(e) && e.key === "Enter") go(); };
+  $("g-skip").onclick = async () => {
+    if(!confirm("잠금 없이 쓰면 이 주소를 아는 사람이 기록을 볼 수 있습니다.\n계속할까요?")) return;
+    lockCfg = {off:true}; saveLock();
+    await bootData(); showApp();
+  };
+  setTimeout(() => { const el = $("g-p1"); if(el) el.focus(); }, 30);
+}
+
+function gateUnlock(){
+  gate('<h2>비밀번호를 넣어 주세요</h2>'
+    + '<input type="password" class="f" id="g-p1" placeholder="비밀번호" autocomplete="current-password">'
+    + '<label class="gatechk"><input type="checkbox" id="g-keep">이 기기에서는 다음부터 묻지 않기</label>'
+    + '<div class="gatemsg" id="g-msg"></div>'
+    + '<button class="btn primary" id="g-go">열기</button>'
+    + '<div class="gaterow"><button class="gatelink" id="g-rec">복구 키 파일로 열기</button></div>'
+    + '<input type="file" id="g-recfile" accept=".txt,.json,text/plain" hidden>');
+  const go = async () => {
+    if(gateBusy) return;
+    gateBusy = true; gateMsg("확인 중…");
+    try {
+      const key = await deriveKey($("g-p1").value, ub64(lockCfg.salt));
+      if(!(await verifyKey(key))){ gateMsg("비밀번호가 맞지 않습니다."); gateBusy = false; return; }
+      cryptoKey = key;
+      if($("g-keep").checked){
+        lockCfg.remember = b64(await SUBTLE.exportKey("raw", key)); saveLock();
+      }
+      await bootData(); showApp();
+    } catch(e){ gateMsg("열지 못했습니다: " + (e.message || e)); }
+    gateBusy = false;
+  };
+  $("g-go").onclick = go;
+  $("g-p1").onkeydown = e => { if(!composing(e) && e.key === "Enter") go(); };
+  $("g-rec").onclick = () => $("g-recfile").click();
+  $("g-recfile").onchange = async () => {
+    const f = $("g-recfile").files[0]; if(!f) return;
+    gateMsg("복구 키 확인 중…");
+    try {
+      const txt = await f.text();
+      const m = txt.match(/KEY:\s*([A-Za-z0-9+/=]+)/);
+      if(!m) throw new Error("복구 키를 찾을 수 없는 파일입니다");
+      const key = await SUBTLE.importKey("raw", ub64(m[1]), {name:"AES-GCM"}, true, ["encrypt","decrypt"]);
+      if(!(await verifyKey(key))) throw new Error("이 기록의 복구 키가 아닙니다");
+      cryptoKey = key;
+      await bootData(); showApp();
+      toast("복구 키로 열었습니다. 비밀번호를 새로 정하시려면 우측 위 톱니바퀴를 누르세요");
+    } catch(e){ gateMsg(e.message || String(e)); }
+  };
+  setTimeout(() => { const el = $("g-p1"); if(el) el.focus(); }, 30);
+}
+
+async function downloadRecovery(key){
+  const raw = b64(await SUBTLE.exportKey("raw", key));
+  const body = "하루 기록장 복구 키\n"
+    + "만든 날짜: " + TODAY + "\n\n"
+    + "비밀번호를 잊었을 때 잠금 화면의 '복구 키 파일로 열기'에 이 파일을 넣으면 열립니다.\n"
+    + "이 파일만 있으면 기록을 읽을 수 있으니 아무 데나 두지 마세요.\n\n"
+    + "KEY: " + raw + "\n";
+  const url = URL.createObjectURL(new Blob([body], {type:"text/plain;charset=utf-8"}));
+  const a = document.createElement("a");
+  a.href = url; a.download = "하루기록장-복구키.txt";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+function lockNow(){
+  cryptoKey = null;
+  if(lockCfg && lockCfg.remember){ delete lockCfg.remember; saveLock(); }
+  location.reload();
+}
+
 /* ═══════════ 기기 간 동기화 (GitHub Gist) ═══════════ */
 const SYNC_LS = "haru-sync-v1";
 const GH = "https://api.github.com";
@@ -3503,13 +3711,13 @@ async function gistRead(id, token){
   if(!f) return null;
   let c = f.content;
   if(f.truncated && f.raw_url) c = await (await fetch(f.raw_url)).text();
-  return JSON.parse(c);
+  return decJSON(c);
 }
-function adoptRemote(remote){
+async function adoptRemote(remote){
   const view = S.view;
   S = migrate(Object.assign(blank(), remote));
   S.view = view;
-  try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){}
+  await saveLocal();
   dirty = false;
 }
 async function syncPull(silent){
@@ -3520,7 +3728,7 @@ async function syncPull(silent){
     if(!remote){ await syncPush(true); return; }
     const rAt = remote.updatedAt || 0, lAt = S.updatedAt || 0;
     if(rAt > lAt){
-      adoptRemote(remote); render();
+      await adoptRemote(remote); render();
       if(!silent) toast("다른 기기의 최신 기록을 받아왔습니다");
       setSync("idle");
     } else if(lAt > rAt){ await syncPush(true); }
@@ -3538,7 +3746,7 @@ async function syncPush(force){
         return;
       }
     }
-    const files = {}; files[GIST_FILE] = {content: JSON.stringify(S)};
+    const files = {}; files[GIST_FILE] = {content: await encJSON(S)};
     await ghFetch("/gists/" + sync.gistId, "PATCH", {files});
     dirty = false;
     setSync("idle");
@@ -3560,7 +3768,7 @@ function openSyncModal(){
   const draw = () => {
     const bytes = stateBytes();
     scrim.innerHTML = '<div class="modal wide" role="dialog" aria-modal="true">'
-      + '<div class="mdhead"><h4>기기 간 동기화</h4><span class="sp"></span>'
+      + '<div class="mdhead"><h4>설정</h4><span class="sp"></span>'
       + '<span class="hbhint">' + (sync.on ? "켜져 있습니다" : "꺼져 있습니다") + '</span></div>'
       + '<div class="mdbody">'
       + '<div class="fld"><label>GitHub 토큰</label>'
@@ -3578,7 +3786,16 @@ function openSyncModal(){
       + '<p class="hbhint" style="line-height:1.7;margin:0">'
       + '토큰은 <b>이 기기 브라우저에만</b> 저장되고 페이지에는 들어가지 않습니다. '
       + 'GitHub → Settings → Developer settings → Personal access tokens 에서 '
-      + '<b>gist 권한만</b> 준 토큰을 만들어 쓰세요. 기기마다 한 번씩 넣으면 그 뒤로는 자동입니다.</p>'
+      + '<b>gist 권한만</b> 준 토큰을 만들어 쓰세요. 기기마다 한 번씩 넣으면 그 뒤로는 자동입니다. '
+      + '올라가는 내용은 <b>비밀번호로 암호화</b>되어 있습니다.</p>'
+      + '<div class="fld" style="border-top:1px solid var(--line-2); padding-top:13px">'
+      + '<label>잠금</label>'
+      + (cryptoKey
+          ? '<div class="frow"><button class="btn" id="sy-pw">비밀번호 바꾸기</button>'
+            + '<button class="btn" id="sy-rec">복구 키 다시 받기</button>'
+            + '<button class="btn" id="sy-lock">지금 잠그기</button></div>'
+          : '<span class="hbhint">잠금이 꺼져 있습니다. 켜려면 이 기기의 기록을 지우고 다시 여셔야 합니다.</span>')
+      + '</div>'
       + '</div><div class="mdfoot">'
       + (sync.on ? '<button class="btn" id="sy-off">연결 해제</button>' : '')
       + '<span class="sp"></span>'
@@ -3594,7 +3811,7 @@ function openSyncModal(){
       if(!tk){ toast("토큰을 먼저 넣어 주세요"); return; }
       busy = "저장소 만드는 중…"; draw();
       try {
-        const files = {}; files[GIST_FILE] = {content: JSON.stringify(S)};
+        const files = {}; files[GIST_FILE] = {content: await encJSON(S)};
         const g = await ghFetch("/gists", "POST", {description:"하루 기록장 데이터", public:false, files}, tk);
         sync.token = tk; sync.gistId = g.id; saveSync();
         busy = ""; setSync("idle"); draw();
@@ -3611,7 +3828,7 @@ function openSyncModal(){
         const remote = await gistRead(sync.gistId);
         busy = "";
         if(remote && (remote.updatedAt || 0) > (S.updatedAt || 0)){
-          adoptRemote(remote); render();
+          await adoptRemote(remote); render();
           toast("저장소의 기록을 받아왔습니다");
         } else { await syncPush(true); toast("이 기기 기록을 올렸습니다"); }
         close(); renderSave();
@@ -3625,6 +3842,31 @@ function openSyncModal(){
     };
     const now = scrim.querySelector("#sy-now");
     if(now) now.onclick = async () => { busy = "동기화 중…"; draw(); await syncPull(false); busy = ""; draw(); };
+    const lk = scrim.querySelector("#sy-lock");
+    if(lk) lk.onclick = () => { close(); lockNow(); };
+    const rc = scrim.querySelector("#sy-rec");
+    if(rc) rc.onclick = async () => { await downloadRecovery(cryptoKey); toast("복구 키 파일을 내려받았습니다"); };
+    const pw = scrim.querySelector("#sy-pw");
+    if(pw) pw.onclick = async () => {
+      const p1 = prompt("새 비밀번호를 넣어 주세요 (8자 이상)");
+      if(p1 == null) return;
+      if(p1.length < 8){ toast("8자 이상으로 해주세요"); return; }
+      const p2 = prompt("한 번 더 넣어 주세요");
+      if(p2 !== p1){ toast("두 번 입력한 값이 다릅니다"); return; }
+      busy = "바꾸는 중…"; draw();
+      try {
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const key = await deriveKey(p1, salt);
+        cryptoKey = key;
+        lockCfg = {salt:b64(salt), check: await encJSON({ok:"haru"})};
+        saveLock();
+        await saveLocal();
+        if(sync.on) await syncPush(true);
+        await downloadRecovery(key);
+        busy = ""; draw();
+        toast("비밀번호를 바꿨습니다. 새 복구 키를 보관해 주세요");
+      } catch(e){ busy = ""; syncMsg = e.message || String(e); draw(); }
+    };
   };
   const openedAt = Date.now();
   scrim.onclick = e => { if(e.target === scrim && Date.now() - openedAt > 350) close(); };
@@ -3641,7 +3883,7 @@ function syncLabel(){
 $("keep").onclick = async () => {
   if(!artifactApi || keeping) return;
   keeping = true; renderSave();
-  const json = JSON.stringify(S).replace(/</g, "\\u003c");
+  const json = (await encJSON(S)).replace(/</g, "\\u003c");
   const doc = PRISTINE.replace(/(<script[^>]*id="app-state"[^>]*>)([\s\S]*?)(<\/script>)/,
     (m,a,b,c) => a + json + c);
   try {
@@ -3663,23 +3905,37 @@ $("export").onclick = async () => {
 };
 
 /* ═══════════ 시작 ═══════════ */
-loadState();
-loadSync();
-render();
-$("syncbtn").onclick = openSyncModal;
-if(sync.on){
-  syncPull(true);
-  document.addEventListener("visibilitychange", () => {
-    if(!document.hidden && sync.on && syncState !== "pushing") syncPull(true);
-  });
-  setInterval(() => { if(!document.hidden && sync.on && syncState === "idle") syncPull(true); }, 180000);
-}
-if(dirty) toast("이 브라우저에만 있던 최신 기록을 불러왔습니다");
-(async () => {
+async function bootData(){
+  await loadState();
+  loadSync();
+  render();
+  $("syncbtn").onclick = openSyncModal;
+  if(sync.on){
+    syncPull(true);
+    document.addEventListener("visibilitychange", () => {
+      if(!document.hidden && sync.on && syncState !== "pushing") syncPull(true);
+    });
+    setInterval(() => { if(!document.hidden && sync.on && syncState === "idle") syncPull(true); }, 180000);
+  }
+  if(dirty) toast("이 브라우저에만 있던 최신 기록을 불러왔습니다");
   try { artifactApi = await claude.use("artifact"); } catch(e){ artifactApi = null; }
   renderSave();
   try { downloadsApi = await claude.use("downloads"); } catch(e){ downloadsApi = null; }
   if(downloadsApi) $("export").hidden = false;
+}
+
+(async () => {
+  loadLock();
+  if(!SUBTLE){ gateUnsupported(); return; }
+  if(!lockCfg){ gateSetup(); return; }
+  if(lockCfg.off){ await bootData(); showApp(); return; }
+  if(lockCfg.remember){
+    try {
+      const key = await SUBTLE.importKey("raw", ub64(lockCfg.remember), {name:"AES-GCM"}, true, ["encrypt","decrypt"]);
+      if(await verifyKey(key)){ cryptoKey = key; await bootData(); showApp(); return; }
+    } catch(e){}
+  }
+  gateUnlock();
 })();
 </script>
 </body>
