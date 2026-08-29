@@ -180,6 +180,20 @@ input,textarea,select{font:inherit; color:inherit}
   font-size:13.5px; transition:border-color .15s,background .15s}
 .f::placeholder{color:var(--ink-3)}
 .f:focus{outline:none; border-color:var(--accent); background:var(--card)}
+.tfield{position:relative; display:inline-block; flex:none}
+.tinput{width:100%; font-family:var(--mono); font-size:13px; text-align:center;
+  font-variant-numeric:tabular-nums; letter-spacing:.02em}
+.tmenu{position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:95; background:var(--card);
+  border:1px solid var(--line); border-radius:9px; box-shadow:var(--pop); padding:4px;
+  max-height:212px; overflow-y:auto; display:block}
+.tmenu[hidden]{display:none}
+.topt{display:flex; align-items:baseline; gap:6px; width:100%; padding:4px 9px; border-radius:6px;
+  font-family:var(--mono); font-size:12.5px; color:var(--ink-2); font-variant-numeric:tabular-nums}
+.topt .tap{font-family:var(--sans); font-size:9.5px; color:var(--ink-3); width:20px; flex:none}
+.topt b{font-weight:500}
+.topt:hover,.topt.on{background:var(--card-2)}
+.topt.cur{background:var(--accent-soft); color:var(--accent-ink)}
+.topt.cur .tap{color:var(--accent-ink)}
 .plus{width:27px; height:27px; flex:none; border:1px dashed var(--line); border-radius:7px;
   color:var(--ink-3); display:grid; place-items:center; font-size:16px; line-height:1;
   transition:border-color .15s,color .15s}
@@ -1647,11 +1661,12 @@ function openCMenu(x, y, ok, id){
     + '<div class="sep"></div>'
     + '<div class="head">' + SVG_ARROW.replace("14 14","14 14") + ' 연기 — 옮길 곳</div>'
     + '<div class="row"><input type="date" class="f" id="cm-date" value="' + addDays(ok,1) + '" style="flex:1">'
-    + (it.allDay ? '' : '<input type="time" class="f" id="cm-time" value="' + (it.start || "09:00") + '" style="width:96px">')
+    + (it.allDay ? '' : timeField("cm-time", it.start || "09:00", 96))
     + '</div><div class="row"><button class="btn" id="cm-move" style="flex:1">연기하기</button></div>'
     + '<div class="sep"></div>'
     + '<button data-a="del" class="danger">' + SVG_X + '삭제</button>';
   document.body.appendChild(el);
+  bindTimeFields(el);
   const r = el.getBoundingClientRect();
   el.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + "px";
   el.style.top = Math.max(8, Math.min(y, innerHeight - r.height - 8)) + "px";
@@ -1727,8 +1742,8 @@ function openItemModal(dateKey, ok, id, preset){
             + '<input type="date" class="f" id="md-to" value="' + d.to + '"></div></div>'
           : '<div class="fld"><label>시각</label><div class="frow">'
             + '<input type="date" class="f" id="md-from" value="' + d.from + '"></div><div class="frow">'
-            + '<input type="time" class="f" id="md-start" value="' + (d.start||"09:00") + '"><span style="color:var(--ink-3)">–</span>'
-            + '<input type="time" class="f" id="md-end" value="' + (d.end||"10:00") + '"></div></div>')
+            + timeField("md-start", d.start || "09:00") + '<span style="color:var(--ink-3)">–</span>'
+            + timeField("md-end", d.end || "10:00") + '</div></div>')
       + '</div><div class="mdfoot">'
       + (editing ? '<button class="btn" id="md-del">삭제</button>' : '')
       + '<span class="sp"></span><button class="btn" id="md-cancel">취소</button>'
@@ -1760,6 +1775,7 @@ function openItemModal(dateKey, ok, id, preset){
     $("md-save").onclick = save;
     const del = $("md-del");
     if(del) del.onclick = () => { removeItem(ok, id); touch(); close(); render(); };
+    bindTimeFields(scrim);
     setTimeout(() => { const t = $("md-title"); if(t) t.focus(); }, 10);
   };
   const close = () => { scrim.remove(); document.removeEventListener("keydown", onKey, true); };
@@ -3500,6 +3516,78 @@ window.addEventListener("beforeunload", e => {
   if(sync.on){ if(pushTimer || syncState === "pushing"){ e.preventDefault(); e.returnValue = ""; } return; }
   if(dirty && artifactApi && !keeping){ e.preventDefault(); e.returnValue = ""; }
 });
+
+/* ═══════════ 시각 입력 ═══════════ */
+function normTime(v){
+  const t = String(v || "").trim();
+  if(!t) return "";
+  let m = t.match(/^(\d{1,2})\s*[:.]\s*(\d{1,2})$/);
+  if(!m){
+    const d = t.replace(/\D/g, "");
+    if(!d) return "";
+    if(d.length <= 2) m = [0, d, "0"];
+    else if(d.length === 3) m = [0, d.slice(0,1), d.slice(1)];
+    else m = [0, d.slice(0,2), d.slice(2,4)];
+  }
+  const h = Math.min(23, Math.max(0, parseInt(m[1], 10) || 0));
+  const mi = Math.min(59, Math.max(0, parseInt(m[2], 10) || 0));
+  return pad(h) + ":" + pad(mi);
+}
+function timeField(id, value, width){
+  return '<span class="tfield" style="width:' + (width || 92) + 'px">'
+    + '<input type="text" class="f tinput" id="' + id + '" value="' + esc(value || "")
+    + '" placeholder="--:--" inputmode="numeric" maxlength="5" autocomplete="off">'
+    + '<span class="tmenu" hidden></span></span>';
+}
+function bindTimeFields(root){
+  root.querySelectorAll(".tfield").forEach(fld => {
+    if(fld._wired) return;
+    fld._wired = true;
+    const inp = fld.querySelector(".tinput"), menu = fld.querySelector(".tmenu");
+    const opts = [];
+    for(let m = 0; m < 24 * 60; m += 15) opts.push(toHM(m));
+    let idx = -1;
+    const paint = () => {
+      menu.innerHTML = opts.map((t,i) => {
+        const hp = hourParts(Number(t.slice(0,2)));
+        return '<button type="button" class="topt' + (i === idx ? " on" : "")
+          + (t === inp.value ? " cur" : "") + '" data-t="' + t + '">'
+          + '<span class="tap">' + hp.ap + '</span><b>' + hp.n + ':' + t.slice(3) + '</b></button>';
+      }).join("");
+      menu.querySelectorAll(".topt").forEach(b => {
+        b.onmousedown = e => { e.preventDefault(); pick(b.dataset.t); };
+      });
+    };
+    const open = () => {
+      if(!menu.hidden) return;
+      idx = Math.max(0, opts.indexOf(normTime(inp.value)));
+      menu.hidden = false; paint();
+      const cur = menu.querySelector(".topt.cur") || menu.children[idx];
+      if(cur) menu.scrollTop = Math.max(0, cur.offsetTop - 68);
+    };
+    const close = () => { menu.hidden = true; idx = -1; };
+    const pick = t => { inp.value = t; close(); inp.dispatchEvent(new Event("change", {bubbles:true})); };
+    inp.onfocus = open;
+    inp.onclick = open;
+    inp.onblur = () => setTimeout(() => { inp.value = normTime(inp.value); close(); }, 120);
+    inp.onkeydown = e => {
+      if(composing(e)) return;
+      if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+        e.preventDefault();
+        if(menu.hidden){ open(); return; }
+        idx = Math.min(opts.length - 1, Math.max(0, idx + (e.key === "ArrowDown" ? 1 : -1)));
+        paint();
+        const el = menu.children[idx];
+        if(el) el.scrollIntoView({block:"nearest"});
+      } else if(e.key === "Enter"){
+        if(!menu.hidden && idx >= 0){ e.preventDefault(); e.stopPropagation(); pick(opts[idx]); }
+        else { inp.value = normTime(inp.value); close(); }
+      } else if(e.key === "Escape"){
+        if(!menu.hidden){ e.stopPropagation(); close(); }
+      }
+    };
+  });
+}
 
 /* ═══════════ 잠금 · 암호화 ═══════════ */
 const LOCK_LS = "haru-lock-v1";
