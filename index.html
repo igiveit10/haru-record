@@ -1764,6 +1764,18 @@ function openItemModal(dateKey, ok, id, preset){
       grab(); d.cat = b.dataset.c; draw(); $("md-title").focus();
     });
     $("md-allday").onchange = e => { grab(); d.allDay = e.target.checked; if(d.allDay) d.to = d.from; draw(); };
+    const stEl = $("md-start"), enEl = $("md-end");
+    if(stEl && enEl){
+      let prevStart = stEl.value;
+      stEl.addEventListener("change", () => {
+        const dur = Math.max(15, toMin(enEl.value) - toMin(prevStart));
+        const ns = toMin(stEl.value);
+        enEl.value = toHM(Math.min(24 * 60 - 1, ns + dur));
+        prevStart = stEl.value;
+        d.start = stEl.value; d.end = enEl.value;
+      });
+      enEl.addEventListener("change", () => { d.end = enEl.value; });
+    }
     const ac = attachProjectAC($("md-title"), () => d.cat);
     $("md-title").onkeydown = e => {
       if(ac.key(e)) return;
@@ -3605,7 +3617,12 @@ function bindTimeFields(root){
       removeEventListener("resize", place);
       removeEventListener("pointerdown", onDown, true);
     };
-    const pick = t => { inp.value = t; close(); inp.dispatchEvent(new Event("change", {bubbles:true})); };
+    const commit = v => {
+      const before = inp.value;
+      inp.value = v;
+      if(inp.value !== before) inp.dispatchEvent(new Event("change", {bubbles:true}));
+    };
+    const pick = t => { commit(t); close(); };
 
     inp.onfocus = open;
     inp.onclick = open;
@@ -3615,7 +3632,7 @@ function bindTimeFields(root){
       paint();
       if(idx >= 0 && menu.children[idx]) menu.children[idx].scrollIntoView({block:"nearest"});
     };
-    inp.onblur = () => setTimeout(() => { inp.value = normTime(inp.value); close(); }, 120);
+    inp.onblur = () => setTimeout(() => { commit(normTime(inp.value)); close(); }, 120);
     inp.onkeydown = e => {
       if(composing(e)) return;
       if(e.key === "ArrowDown" || e.key === "ArrowUp"){
@@ -3627,7 +3644,7 @@ function bindTimeFields(root){
         if(el) el.scrollIntoView({block:"nearest"});
       } else if(e.key === "Enter"){
         if(menu && idx >= 0){ e.preventDefault(); e.stopPropagation(); pick(opts[idx]); }
-        else { inp.value = normTime(inp.value); close(); }
+        else { commit(normTime(inp.value)); close(); }
       } else if(e.key === "Escape"){
         if(menu){ e.stopPropagation(); close(); }
       }
