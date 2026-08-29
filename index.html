@@ -1715,7 +1715,10 @@ function openItemModal(dateKey, ok, id, preset){
     title: src ? src.title : "",
     allDay: src ? src.allDay : (preset && preset.allDay ? true : false),
     start: src ? src.start : (preset && preset.start ? preset.start : "09:00"),
-    end: src ? src.end : (preset && preset.end ? preset.end : "10:00"),
+    end: src ? src.end
+        : (preset && preset.end ? preset.end
+           : toHM(toMin(preset && preset.start ? preset.start : "09:00") + 60)),
+    endTouched: !!src,
     from: ok || dateKey,
     to: src ? (src.endDate || ok) : dateKey
   };
@@ -1768,13 +1771,17 @@ function openItemModal(dateKey, ok, id, preset){
     if(stEl && enEl){
       let prevStart = stEl.value;
       stEl.addEventListener("change", () => {
-        const dur = Math.max(15, toMin(enEl.value) - toMin(prevStart));
-        const ns = toMin(stEl.value);
-        enEl.value = toHM(Math.min(24 * 60 - 1, ns + dur));
+        /* 끝을 손대지 않았으면 시작 +1시간, 손댔으면 그 길이를 유지 */
+        let dur = 60;
+        if(d.endTouched){
+          const gap = toMin(enEl.value) - toMin(prevStart);
+          if(gap > 0 && gap <= 12 * 60) dur = gap;
+        }
+        enEl.value = toHM(Math.min(24 * 60 - 1, toMin(stEl.value) + dur));
         prevStart = stEl.value;
         d.start = stEl.value; d.end = enEl.value;
       });
-      enEl.addEventListener("change", () => { d.end = enEl.value; });
+      enEl.addEventListener("change", () => { d.end = enEl.value; d.endTouched = true; });
     }
     const ac = attachProjectAC($("md-title"), () => d.cat);
     $("md-title").onkeydown = e => {
