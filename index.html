@@ -583,6 +583,7 @@ html,body{max-width:100%; overflow-x:hidden}
 .wkday.sel{background:var(--accent-soft)}
 .wksep{padding:7px 12px; font-size:10.5px; letter-spacing:.14em; color:var(--ink-3);
   background:var(--card-2); border-bottom:1px solid var(--line); border-top:1px solid var(--line)}
+.wkgut{display:none}
 .wkchk{border-right:1px solid var(--line-2); display:grid; place-items:center; padding:5px 0;
   transition:background .12s}
 .wkchk:last-child{border-right:0}
@@ -972,9 +973,10 @@ html,body{max-width:100%; overflow-x:hidden}
   .segbar .sp{display:none}
   .seg2 button{padding:5px 11px; font-size:12px}
   .wkst{min-width:44px}
-  .wkrow{grid-template-columns:46px repeat(7,minmax(0,1fr))}
-  .wklb{font-size:10.5px; padding-left:6px; padding-right:2px}
-  .wklb.sub{padding-left:10px}
+  .wkrow{grid-template-columns:29px repeat(7,minmax(0,1fr))}
+  .wkgut{display:block}
+  .wklb{grid-column:1 / -1; padding:7px 11px 1px; font-size:11px}
+  .wklb.sub{padding-left:11px}
   .wksep{padding:7px 11px}
   #pj-name{flex:1 1 76px; width:auto !important; min-width:0}
   .segbar.addbar .lbl{flex:none}
@@ -3061,7 +3063,9 @@ function renderWeekly(){
     for(let h = from; h <= to; h++){
       const {ap, n} = hourLabel(h);
       hours += '<div class="wtghour" style="height:' + PX_HW + 'px">'
-        + ((h === from || h === 12) ? '<span class="ap">' + ap + '</span>' : '') + '<b>' + n + '</b></div>';
+        + (isNarrow() ? '<b>' + h + '</b>'
+            : ((h === from || h === 12) ? '<span class="ap">' + ap + '</span>' : '') + '<b>' + n + '</b>')
+        + '</div>';
     }
     hours += '</div>';
 
@@ -3121,6 +3125,7 @@ function renderWeekly(){
     hbRows = '<div class="wksep">습관</div>'
       + hb.map(x =>
         '<div class="wkrow"><span class="wklb" title="' + esc(x.name) + '">' + esc(x.name) + '</span>'
+        + '<span class="wkgut"></span>'
         + days.map(dk => '<button class="wkchk' + (hasHabit(dk,x.id) ? " on" : "") + (dk > TODAY ? " future" : "")
             + '" data-h="' + x.id + '" data-k="' + dk + '" role="checkbox" aria-checked="'
             + (hasHabit(dk,x.id)?"true":"false") + '" aria-label="' + esc(x.name) + ' ' + labelKo(dk)
@@ -3128,6 +3133,7 @@ function renderWeekly(){
       + met.map(x =>
         '<div class="wkrow"><span class="wklb sub" title="' + esc(x.name) + ' 수치">'
         + esc(x.name) + ' 값</span>'
+        + '<span class="wkgut"></span>'
         + days.map(dk => {
             const v = metVals(dk, x.id);
             const parts = x.fields.map((f,i) => {
