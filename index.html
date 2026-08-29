@@ -3684,7 +3684,7 @@ async function encJSON(obj){
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await SUBTLE.encrypt({name:"AES-GCM", iv}, cryptoKey,
     new TextEncoder().encode(JSON.stringify(obj)));
-  return JSON.stringify({enc:1, iv:b64(iv), ct:b64(ct)});
+  return JSON.stringify({enc:1, salt:(lockCfg && lockCfg.salt) || "", iv:b64(iv), ct:b64(ct)});
 }
 async function decJSON(text){
   const o = JSON.parse(text);
@@ -3734,6 +3734,7 @@ function gateSetup(){
     + '<label class="gatechk"><input type="checkbox" id="g-ack">복구 키 파일을 보관하겠습니다</label>'
     + '<div class="gatemsg" id="g-msg"></div>'
     + '<button class="btn primary" id="g-go">잠금 켜고 시작하기</button>'
+    + '<button class="gatelink" id="g-join">다른 기기에서 쓰던 기록 이어서 쓰기</button>'
     + '<button class="gatelink" id="g-skip">잠금 없이 쓰기</button>');
   const go = async () => {
     if(gateBusy) return;
@@ -3756,6 +3757,7 @@ function gateSetup(){
     gateBusy = false;
   };
   $("g-go").onclick = go;
+  $("g-join").onclick = gateJoin;
   $("g-p2").onkeydown = e => { if(!composing(e) && e.key === "Enter") go(); };
   $("g-skip").onclick = async () => {
     if(!confirm("잠금 없이 쓰면 이 주소를 아는 사람이 기록을 볼 수 있습니다.\n계속할까요?")) return;
@@ -3763,6 +3765,56 @@ function gateSetup(){
     await bootData(); showApp();
   };
   setTimeout(() => { const el = $("g-p1"); if(el) el.focus(); }, 30);
+}
+
+function gateJoin(){
+  gate('<h2>다른 기기에서 쓰던 기록 이어서 쓰기</h2>'
+    + '<p>먼저 쓰시던 기기에서 우측 위 <b>⚙</b> 를 열면 토큰과 저장소(Gist ID)가 있습니다. '
+    + '그 둘과 그때 정한 비밀번호를 넣어 주세요.</p>'
+    + '<input type="password" class="f" id="j-token" placeholder="GitHub 토큰" autocomplete="off">'
+    + '<input type="text" class="f" id="j-gist" placeholder="저장소 (Gist ID)" autocomplete="off">'
+    + '<input type="password" class="f" id="j-pass" placeholder="비밀번호" autocomplete="current-password">'
+    + '<div class="gatemsg" id="g-msg"></div>'
+    + '<button class="btn primary" id="j-go">가져오기</button>'
+    + '<button class="gatelink" id="j-back">처음으로</button>');
+  $("j-back").onclick = gateSetup;
+  const go = async () => {
+    if(gateBusy) return;
+    const tk = $("j-token").value.trim(), gid = $("j-gist").value.trim(), pw = $("j-pass").value;
+    if(!tk || !gid){ gateMsg("토큰과 저장소를 모두 넣어 주세요."); return; }
+    gateBusy = true; gateMsg("가져오는 중…");
+    try {
+      sync.token = tk; sync.gistId = gid;
+      const raw = await gistRawText(gid, tk);
+      if(raw === null) throw new Error("저장소에 기록 파일이 없습니다");
+      const env = JSON.parse(raw);
+      if(env && env.enc){
+        if(!env.salt) throw new Error("이 저장소는 예전 방식이라 이어받을 수 없습니다. 먼저 쓰던 기기에서 ⚙ → 비밀번호 바꾸기를 한 번 해주세요");
+        if(!pw){ gateMsg("비밀번호를 넣어 주세요."); gateBusy = false; return; }
+        const key = await deriveKey(pw, ub64(env.salt));
+        const prev = cryptoKey; cryptoKey = key;
+        let data;
+        try { data = await decJSON(raw); }
+        catch(e){ cryptoKey = prev; throw new Error("비밀번호가 맞지 않습니다"); }
+        lockCfg = {salt: env.salt, check: await encJSON({ok:"haru"})};
+        saveLock(); saveSync();
+        S = migrate(Object.assign(blank(), data));
+        S.view = {};
+        await saveLocal();
+      } else {
+        lockCfg = {off:true}; saveLock(); saveSync();
+        S = migrate(Object.assign(blank(), env || {}));
+        S.view = {};
+        await saveLocal();
+      }
+      await bootData(); showApp();
+      toast("다른 기기의 기록을 가져왔습니다");
+    } catch(e){ gateMsg(e.message || String(e)); }
+    gateBusy = false;
+  };
+  $("j-go").onclick = go;
+  $("j-pass").onkeydown = e => { if(!composing(e) && e.key === "Enter") go(); };
+  setTimeout(() => { const el = $("j-token"); if(el) el.focus(); }, 30);
 }
 
 function gateUnlock(){
@@ -3863,13 +3915,17 @@ async function ghFetch(path, method, body, token){
   }
   return r.json();
 }
-async function gistRead(id, token){
+async function gistRawText(id, token){
   const g = await ghFetch("/gists/" + id, "GET", null, token);
   const f = (g.files || {})[GIST_FILE];
   if(!f) return null;
   let c = f.content;
   if(f.truncated && f.raw_url) c = await (await fetch(f.raw_url)).text();
-  return decJSON(c);
+  return c;
+}
+async function gistRead(id, token){
+  const c = await gistRawText(id, token);
+  return c === null ? null : decJSON(c);
 }
 async function adoptRemote(remote){
   const view = S.view;
