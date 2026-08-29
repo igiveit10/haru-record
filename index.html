@@ -102,7 +102,15 @@ input,textarea,select{font:inherit; color:inherit}
   border-bottom:2px solid transparent; transition:color .15s,border-color .15s; white-space:nowrap;
   flex:none}
 
-html,body{max-width:100%; overflow-x:hidden}
+html,body{max-width:100%; overflow-x:hidden; overscroll-behavior-x:none}
+@supports (overflow-x:clip){ html,body{overflow-x:clip} }
+/* 세로 스크롤과 확대만 허용 — 가로로 끌려 흔들리지 않게 */
+.wrap{touch-action:pan-y pinch-zoom}
+.tabs{touch-action:pan-x}
+@keyframes slFromR{from{opacity:.4; transform:translateX(16px)} to{opacity:1; transform:none}}
+@keyframes slFromL{from{opacity:.4; transform:translateX(-16px)} to{opacity:1; transform:none}}
+#view.slL{animation:slFromR .18s ease-out}
+#view.slR{animation:slFromL .18s ease-out}
 .tabs button:hover{color:var(--ink-2)}
 .tabs button[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent); font-weight:500}
 .tabbar .savebox{padding-bottom:6px}
@@ -1162,6 +1170,7 @@ html,body{max-width:100%; overflow-x:hidden}
     예정일정은 빈 곳을 <b>눌러</b> 추가하고, 항목을 <b>길게 눌러</b> 끌면 시간이 옮겨집니다.
     항목을 <b>길게 누르면</b> 완료·연기·삭제를 고를 수 있습니다.
     맨 위 <b>돋보기</b>를 누르면 일정·기록·프로젝트를 한 번에 찾습니다.
+    빈 곳을 <b>좌우로 튕기면</b> 다음·이전 날짜(주·달)로 넘어갑니다.
     변경은 이 브라우저에 바로 저장되며, <b>보관하기</b>를 눌러야 다른 기기에서도 보입니다.
   </p>
 </div>
@@ -4014,6 +4023,39 @@ document.addEventListener("keydown", e => {
     e.preventDefault(); if(!$("scrim")) openSearch();
   }
 });
+/* ── 좌우로 튕기면 하루(주·달) 넘기기 ── */
+(function(){
+  const PAGED = {day:1, week:1, month:1};
+  const SKIP = ".tgitem,.wtgitem,.calbar,.adchip,.tabs,.gantt,.hbcanvas,input,textarea,select,.seg2,.pick,.kindpick";
+  let sx = 0, sy = 0, st = 0, live = false;
+  const busy = () => $("scrim") || $("cmenu") || document.querySelector(".lightbox")
+    || document.querySelector(".dragging");
+  addEventListener("touchstart", e => {
+    live = false;
+    if(e.touches.length !== 1 || busy() || !S || !PAGED[S.view.mode]) return;
+    const t = e.touches[0];
+    if(t.target && t.target.closest && t.target.closest(SKIP)) return;
+    sx = t.clientX; sy = t.clientY; st = Date.now(); live = true;
+  }, {passive:true});
+  addEventListener("touchend", e => {
+    if(!live) return;
+    live = false;
+    if(busy()) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if(Date.now() - st > 700) return;
+    if(Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.8) return;
+    const n = dx < 0 ? 1 : -1;
+    shift(n);
+    const el = $("view");
+    if(!el) return;
+    el.classList.remove("slL","slR");
+    void el.offsetWidth;
+    el.classList.add(n > 0 ? "slL" : "slR");
+    setTimeout(() => el.classList.remove("slL","slR"), 240);
+  }, {passive:true});
+})();
+
 let lastW = innerWidth, reflowT = null;
 addEventListener("resize", () => {
   clearTimeout(reflowT);
