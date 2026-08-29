@@ -3569,6 +3569,12 @@ function bindTimeFields(root){
     const pick = t => { inp.value = t; close(); inp.dispatchEvent(new Event("change", {bubbles:true})); };
     inp.onfocus = open;
     inp.onclick = open;
+    inp.oninput = () => {
+      if(menu.hidden) return;
+      idx = opts.indexOf(normTime(inp.value));
+      paint();
+      if(idx >= 0 && menu.children[idx]) menu.children[idx].scrollIntoView({block:"nearest"});
+    };
     inp.onblur = () => setTimeout(() => { inp.value = normTime(inp.value); close(); }, 120);
     inp.onkeydown = e => {
       if(composing(e)) return;
