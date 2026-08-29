@@ -680,6 +680,10 @@ html,body{max-width:100%; overflow-x:hidden}
   border-right:4px solid transparent; border-top:5px solid var(--pc)}
 .gspan em{font-style:normal; display:block; font-size:9.5px; color:var(--ink-3); opacity:.9}
 .gspan em.late{color:var(--sun); opacity:1}
+.gtag{flex:none; font-style:normal; font-size:10px; border-radius:5px; padding:1px 6px;
+  background:var(--accent-soft); color:var(--accent-ink)}
+.gtag.cat-p{background:var(--tag-p-bg); color:var(--tag-p-ink)}
+.segbar.addbar{border-top:0; background:var(--card)}
 .gcnt{flex:none; font-style:normal; font-family:var(--mono); font-size:10px; color:var(--ink-3);
   background:var(--line-2); border-radius:99px; padding:1px 6px; font-variant-numeric:tabular-nums}
 .gcnt.full{background:var(--accent-soft); color:var(--accent-ink)}
@@ -2875,13 +2879,14 @@ function renderProjects(){
   $("view").innerHTML =
       '<div class="panel"><div class="ph"><h3>프로젝트</h3><span class="sp"></span>'
     + '<span class="hint2">이름을 누르면 관리 · 진한 칸 = 지난 구간 · 옅은 칸 = 예정 · 붉은 선 = 오늘</span></div>'
-    + '<div class="segbar" style="border-top:0"><div class="seg2" id="pj-cat">'
+    + '<div class="segbar" style="border-top:0"><span class="lbl">보기</span><div class="seg2" id="pj-cat">'
     + ["전체","업무","개인"].map(c => '<button data-v="' + c + '" class="' + (c === "개인" ? "cat-p" : "")
         + '" aria-pressed="' + (fc === c ? "true" : "false") + '">' + c + '</button>').join("")
-    + '</div><span class="sp"></span><div class="pick" id="pj-new-cat">'
+    + '</div></div>'
+    + '<div class="segbar addbar"><span class="lbl">새 프로젝트</span><div class="pick" id="pj-new-cat">'
     + CATS.map(c => '<button class="' + catCls(c) + '" data-c="' + c + '" aria-pressed="'
         + (c === "업무" ? "true" : "false") + '">' + c + '</button>').join("")
-    + '</div><input type="text" class="f" id="pj-name" placeholder="새 프로젝트 이름" maxlength="24" style="width:170px">'
+    + '</div><input type="text" class="f" id="pj-name" placeholder="이름" maxlength="24" style="width:170px">'
     + '<button class="btn primary" id="pj-add">추가</button></div></div>'
 
     + '<div class="panel" style="margin-top:16px"><div class="ph"><h3>진행 중인 프로젝트</h3>'
@@ -3467,6 +3472,7 @@ function ganttBlock(rows, rFrom, rTo, opts){
         + '<div class="gline" data-p="' + esc(r.name) + '">'
         + '<span class="gnm">' + (foldable ? '<i class="gchev">&#9656;</i>' : '')
         + '<i class="gdot"></i><span class="gnmtxt">' + esc(r.name) + '</span>'
+        + (opts.actions && r.cat ? '<em class="gtag ' + catCls(r.cat) + '">' + r.cat + '</em>' : '')
         + (opts.actions && r.st.items.length
             ? '<em class="gcnt' + (r.st.done === r.st.items.length ? " full" : "") + '">'
               + r.st.done + '/' + r.st.items.length + '</em>' : '')
