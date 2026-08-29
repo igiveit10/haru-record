@@ -186,9 +186,9 @@ input,textarea,select{font:inherit; color:inherit}
 .tmenu{position:fixed; z-index:120; background:var(--card); border:1px solid var(--line);
   border-radius:10px; box-shadow:var(--pop); padding:5px; overflow-y:auto;
   -webkit-overflow-scrolling:touch}
-.topt{display:flex; align-items:baseline; gap:7px; width:100%; padding:6px 10px; border-radius:7px;
-  font-family:var(--mono); font-size:13px; color:var(--ink-2); font-variant-numeric:tabular-nums}
-.topt .tap{font-family:var(--sans); font-size:9.5px; color:var(--ink-3); width:20px; flex:none}
+.topt{display:flex; align-items:center; justify-content:center; width:100%; padding:6px 10px;
+  border-radius:7px; font-family:var(--mono); font-size:13px; color:var(--ink-2);
+  font-variant-numeric:tabular-nums; letter-spacing:.02em}
 .topt b{font-weight:500}
 .topt:hover,.topt.on{background:var(--card-2)}
 .topt.cur{background:var(--accent-soft); color:var(--accent-ink)}
@@ -3573,12 +3573,9 @@ function bindTimeFields(root){
     const paint = () => {
       if(!menu) return;
       const cur = normTime(inp.value);
-      menu.innerHTML = opts.map((t,i) => {
-        const hp = hourLabel(Number(t.slice(0,2)));
-        return '<button type="button" class="topt' + (i === idx ? " on" : "")
-          + (t === cur ? " cur" : "") + '" data-t="' + t + '">'
-          + '<span class="tap">' + hp.ap + '</span><b>' + hp.n + ':' + t.slice(3) + '</b></button>';
-      }).join("");
+      menu.innerHTML = opts.map((t,i) =>
+        '<button type="button" class="topt' + (i === idx ? " on" : "")
+          + (t === cur ? " cur" : "") + '" data-t="' + t + '"><b>' + t + '</b></button>').join("");
       menu.querySelectorAll(".topt").forEach(b2 => {
         b2.onmousedown = e => { e.preventDefault(); pick(b2.dataset.t); };
       });
