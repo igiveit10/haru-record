@@ -230,8 +230,11 @@ html,body{max-width:100%; overflow-x:hidden; overscroll-behavior-x:none}
   font-size:12.5px; max-width:100%; background:var(--accent-soft); color:var(--accent-ink);
   border:1px solid transparent; cursor:pointer}
 .adchip.cat-p{background:var(--tag-p-bg); color:var(--tag-p-ink)}
-.adchip.task{border-style:dashed; border-color:currentColor}
+.kmk{display:inline-block; width:9px; height:9px; margin-right:5px; flex:none;
+  border:1.5px solid currentColor; border-radius:2px; opacity:.8; vertical-align:-1px}
+.done .kmk{background:currentColor; opacity:.45}
 .adchip span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.adchip .kmk{margin-right:0}
 .adchip small{font-family:var(--mono); font-size:10px; opacity:.7}
 .adchip.done span{text-decoration:line-through; opacity:.6}
 .adchip.moved span,.adchip.deleted span{opacity:.5}
@@ -254,8 +257,6 @@ html,body{max-width:100%; overflow-x:hidden; overscroll-behavior-x:none}
 .tgitem::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent)}
 .tgitem.cat-p{background:var(--tag-p-bg); color:var(--ink)}
 .tgitem.cat-p::before{background:var(--tag-p-ink)}
-.tgitem.task{border-style:dashed; border-color:var(--accent)}
-.tgitem.task.cat-p{border-color:var(--tag-p-line)}
 .tgitem b{display:block; font-family:var(--mono); font-size:10px; font-weight:500; opacity:.75;
   font-variant-numeric:tabular-nums}
 .tgitem span{display:block; overflow:hidden; text-overflow:ellipsis}
@@ -501,8 +502,6 @@ html,body{max-width:100%; overflow-x:hidden; overscroll-behavior-x:none}
 .wtgitem::before{content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--accent)}
 .wtgitem.cat-p{background:var(--tag-p-bg)}
 .wtgitem.cat-p::before{background:var(--tag-p-ink)}
-.wtgitem.task{border-style:dashed; border-color:var(--accent)}
-.wtgitem.task.cat-p{border-color:var(--tag-p-line)}
 .wtgitem b{display:block; font-family:var(--mono); font-size:9px; font-weight:500; opacity:.7}
 .wtgitem span{display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .wtgitem.done{opacity:.5} .wtgitem.done span{text-decoration:line-through}
@@ -708,7 +707,8 @@ html,body{max-width:100%; overflow-x:hidden; overscroll-behavior-x:none}
   cursor:pointer; background:var(--pcs); color:var(--pck); border-left:3px solid var(--pc);
   transition:filter .12s}
 .calbar:hover{filter:brightness(.96)}
-.calbar.task{border-left-style:dashed}
+.calbar .kmk{width:7px; height:7px; margin-right:4px; vertical-align:0}
+.wtgitem .kmk{width:7px; height:7px; margin-right:3px}
 .calbar.done{opacity:.55; text-decoration:line-through}
 .calbar.moved{opacity:.45}
 .calbar.contL{border-left:0; border-top-left-radius:0; border-bottom-left-radius:0; margin-left:0;
@@ -1671,7 +1671,7 @@ function renderDaily(){
     adHtml += '<span class="adchip ' + catCls(it.cat) + ' ' + it.kind + ' ' + it.status
       + '" data-ok="' + o.ok + '" data-id="' + it.id + '">'
       + (multi ? '<small>' + shortKo(o.ok) + '–' + shortKo(it.endDate) + '</small>' : '')
-      + '<span>' + esc(it.title) + '</span></span>';
+      + kindMark(it) + '<span>' + esc(it.title) + '</span></span>';
   });
   adHtml += '<button class="plus" data-act="addallday" aria-label="종일 항목 추가" '
     + 'style="width:23px;height:23px;font-size:14px">+</button></div></div>';
@@ -1700,7 +1700,7 @@ function renderDaily(){
       + ' style="top:' + t.toFixed(1) + 'px;height:' + hgt.toFixed(1) + 'px;'
       + 'left:calc(' + l + '% + 3px);width:calc(' + w + '% - 6px)">'
       + '<b>' + it.start + (it.end ? '–' + it.end : '') + '</b>'
-      + '<span>' + esc(it.title) + '</span></div>';
+      + '<span>' + kindMark(it) + esc(it.title) + '</span></div>';
   });
   const nowLine = (nowMin >= top0 && nowMin <= (to+1)*60)
     ? '<div class="tgnow" style="top:' + ((nowMin - top0)/60*PX_H).toFixed(1) + 'px"></div>' : '';
@@ -1710,7 +1710,7 @@ function renderDaily(){
 
   let h = '<div class="daygrid"><div class="panel" style="min-height:100%">'
     + '<div class="ph"><h3>예정일정</h3><span class="sp"></span>'
-    + '<em>일정 ' + nEv + ' · 할일 ' + nTask + '</em></div>'
+    + '<em>일정 ' + nEv + ' · <i class="kmk"></i>할일 ' + nTask + '</em></div>'
     + adHtml
     + '<div class="tgwrap">' + hoursHtml
     + '<div class="tgcanvas" id="tgcanvas" style="height:' + height + 'px">' + nowLine + itemsHtml + '</div>'
@@ -3137,7 +3137,8 @@ function renderWeekly(){
         const it = o.it;
         if(!it.allDay || !live(it) || !catOK(it)) return;
         ad += '<span class="adchip ' + catCls(it.cat) + ' ' + it.kind + ' ' + it.status
-          + '" data-ok="' + o.ok + '" data-id="' + it.id + '"><span>' + esc(it.title) + '</span></span>';
+          + '" data-ok="' + o.ok + '" data-id="' + it.id + '">' + kindMark(it) + '<span>'
+          + esc(it.title) + '</span></span>';
       });
       ad += '</div>';
     });
@@ -3171,7 +3172,7 @@ function renderWeekly(){
           + 'left:calc(' + l + '% + 2px);width:calc(' + w + '% - 4px)" title="'
           + esc(it.start + "–" + it.end + " " + it.title) + '">'
           + (hgt >= 26 ? '<b>' + it.start + '</b>' : '')
-          + '<span>' + esc(it.title) + '</span></div>';
+          + '<span>' + kindMark(it) + esc(it.title) + '</span></div>';
       });
       const nl = (dk === TODAY && nowMin >= top0 && nowMin <= (to+1)*60)
         ? '<div class="wtgnow" style="top:' + ((nowMin-top0)/60*PX_HW).toFixed(1) + 'px"></div>' : '';
@@ -3484,6 +3485,7 @@ function prjColorIdx(name){
   for(let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
   return h % 8;
 }
+const kindMark = it => it.kind === "task" ? '<i class="kmk"></i>' : "";
 const prjClass = name => name ? ("pc" + prjColorIdx(name)) : "pcx";
 const stripPrj = t => (t || "").replace(/^[\[(]\s*[^\])\n]{1,24}\s*[\])]\s*/, "");
 
@@ -3662,7 +3664,7 @@ function renderMonthly(){
       bars += '<div class="' + cls.join(" ") + '" data-ok="' + sp.ok + '" data-id="' + sp.it.id + '"'
         + ' style="grid-column:' + (si+1) + '/' + (ei+2) + ';grid-row:' + (lane+1) + '"'
         + ' title="' + esc(sp.it.title + (sp.e > sp.s ? " (" + shortKo(sp.s) + "–" + shortKo(sp.e) + ")" : "")) + '">'
-        + esc(sp.s < ws ? sp.it.title : (name ? sp.it.title : sp.it.title)) + '</div>';
+        + kindMark(sp.it) + esc(sp.it.title) + '</div>';
     });
 
     let cells = "";
@@ -3875,7 +3877,7 @@ function sqRows(r){
       '<button class="sqrow ' + it.status + '" data-go="day" data-k="' + k + '">'
       + '<span class="sqk">' + shortKo(k) + ' ' + DOW[fromKey(k).getDay()] + '</span>'
       + '<span class="tag ' + catCls(it.cat) + '">' + it.cat + '</span>'
-      + '<span class="sqt">' + hilite(it.title, r.q) + '</span>'
+      + '<span class="sqt">' + kindMark(it) + hilite(it.title, r.q) + '</span>'
       + '<span class="sqm">' + (it.allDay ? "종일" : it.start + "–" + it.end)
       + (it.status === "done" ? " · 완료" : it.status === "moved" ? " · 연기" : "") + '</span></button>').join("");
     h += more(r.items.length, SQ_CAP);
