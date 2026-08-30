@@ -4508,10 +4508,25 @@ function gateJoin(){
     + '<button class="gatelink" id="j-back">처음으로</button>');
   $("j-back").onclick = gateSetup;
   bindConnPaste($("j-token"), $("j-gist"));
+  bindConnPaste($("j-gist"), $("j-gist"));
+  bindConnPaste($("j-pass"), $("j-gist"));
   const go = async () => {
     if(gateBusy) return;
+    /* 어느 칸에 넣었든, 이벤트가 안 잡혔든 — 누를 때 다시 한 번 읽는다 */
+    ["j-token","j-gist","j-pass"].forEach(fid => {
+      const el = $(fid); if(!el) return;
+      const c = readConnCode(el.value);
+      if(!c) return;
+      $("j-token").value = c.token;
+      if(c.gistId) $("j-gist").value = c.gistId;
+      if(fid !== "j-token") el.value = "";
+    });
     const tk = $("j-token").value.trim(), pw = $("j-pass").value;
     let gid = $("j-gist").value.trim();
+    if(tk.indexOf(CONN_TAG) === 0){
+      gateMsg("연결 코드를 읽지 못했습니다. 코드 전체가 빠짐없이 붙여넣어졌는지 확인해 주세요.");
+      gateBusy = false; return;
+    }
     if(!tk){ gateMsg("토큰을 넣어 주세요."); return; }
     gateBusy = true; gateMsg("가져오는 중…");
     try {
@@ -4914,8 +4929,19 @@ function openSyncModal(){
       } catch(e){ busy = ""; syncMsg = e.message || String(e); draw(); }
     };
     scrim.querySelector("#sy-save").onclick = async () => {
+      ["#sy-token","#sy-gist","#sy-pass"].forEach(sel => {
+        const el = scrim.querySelector(sel); if(!el) return;
+        const c = readConnCode(el.value);
+        if(!c) return;
+        scrim.querySelector("#sy-token").value = c.token;
+        if(c.gistId) scrim.querySelector("#sy-gist").value = c.gistId;
+        if(sel !== "#sy-token") el.value = "";
+      });
       const tk = scrim.querySelector("#sy-token").value.trim();
       let gid = scrim.querySelector("#sy-gist").value.trim();
+      if(tk.indexOf(CONN_TAG) === 0){
+        toast("연결 코드를 읽지 못했습니다 — 전체가 복사됐는지 확인해 주세요"); return;
+      }
       const pwEl = scrim.querySelector("#sy-pass");
       const pw = pwEl ? pwEl.value : "";
       if(!tk){ toast("토큰을 넣어 주세요"); return; }
