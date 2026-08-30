@@ -1228,6 +1228,7 @@ const monthKey = (mon,i) => mon + "-" + pad(i);
 
 /* ═══════════ 상태 ═══════════ */
 const LS = "haru-record-v2";
+let localBroken = false;
 const blank = () => ({items:{}, notes:{}, habits:[], habitLog:{}, metrics:{}, projects:[], view:{}, updatedAt:0});
 let S, dirty=false, keeping=false, artifactApi=null, downloadsApi=null;
 let wideRange = false;
@@ -1314,8 +1315,14 @@ function migrate(st){
 async function loadState(){
   let embedded = blank();
   try { embedded = Object.assign(blank(), await decJSON($("app-state").textContent)); } catch(e){}
-  let local = null;
-  try { const raw = localStorage.getItem(LS); if(raw) local = await decJSON(raw); } catch(e){}
+  let raw = null, local = null;
+  try { raw = localStorage.getItem(LS); } catch(e){}
+  if(raw){ try { local = await decJSON(raw); } catch(e){ local = null; } }
+  /* 저장된 기록이 있는데 읽지 못했다면 — 절대 빈 상태로 덮어쓰지 않는다 */
+  localBroken = !!raw && !local;
+  if(localBroken){
+    try { if(!localStorage.getItem(LS + "-broken")) localStorage.setItem(LS + "-broken", raw); } catch(e){}
+  }
   if(local && (local.updatedAt||0) > (embedded.updatedAt||0)){ S = Object.assign(blank(), local); dirty = true; }
   else { S = embedded; }
   migrate(S);
@@ -1328,10 +1335,30 @@ async function loadState(){
   if(["전체","업무","개인"].indexOf(S.view.wkCat) < 0) S.view.wkCat = "전체";
   if(["전체","업무","개인"].indexOf(S.view.prjCat) < 0) S.view.prjCat = "전체";
   if(["month","3m","6m","all"].indexOf(S.view.hbRange) < 0) S.view.hbRange = "month";
-  if(!dirty) await saveLocal();
+  if(!dirty && !localBroken) await saveLocal();
 }
 async function saveLocal(){
-  try { localStorage.setItem(LS, await encJSON(S)); } catch(e){}
+  try {
+    const next = await encJSON(S);
+    const prev = localStorage.getItem(LS);
+    /* 직전 판을 한 벌 남겨 둔다 — 실수로 덮어써도 되살릴 수 있게 */
+    if(prev && prev !== next){ try { localStorage.setItem(LS + "-prev", prev); } catch(e){} }
+    localStorage.setItem(LS, next);
+  } catch(e){}
+}
+/* 직전 판으로 되돌리기 (콘솔에서: haruUndo()) */
+async function haruUndo(){
+  const prev = localStorage.getItem(LS + "-prev");
+  if(!prev){ toast("되돌릴 직전 기록이 없습니다"); return false; }
+  const st = await decJSON(prev);
+  if(!st){ toast("직전 기록을 읽지 못했습니다"); return false; }
+  const cur = localStorage.getItem(LS);
+  S = migrate(Object.assign(blank(), st));
+  S.view = S.view || {}; S.view.selected = TODAY; S.view.month = TODAY.slice(0,7);
+  if(cur) try { localStorage.setItem(LS + "-prev", cur); } catch(e){}
+  localStorage.setItem(LS, prev);
+  render(); toast("직전 기록으로 되돌렸습니다");
+  return true;
 }
 function touch(){
   S.updatedAt = Date.now(); dirty = true;
@@ -4788,7 +4815,8 @@ async function bootData(){
     });
     setInterval(() => { if(!document.hidden && sync.on && syncState === "idle") syncPull(true); }, 180000);
   }
-  if(dirty) toast("이 브라우저에만 있던 최신 기록을 불러왔습니다");
+  if(localBroken) toast("이 기기에 저장된 기록을 읽지 못했습니다 — 덮어쓰지 않고 그대로 두었습니다");
+  else if(dirty) toast("이 브라우저에만 있던 최신 기록을 불러왔습니다");
   try { artifactApi = await claude.use("artifact"); } catch(e){ artifactApi = null; }
   renderSave();
   try { downloadsApi = await claude.use("downloads"); } catch(e){ downloadsApi = null; }
