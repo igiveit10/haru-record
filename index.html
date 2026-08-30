@@ -4557,12 +4557,55 @@ async function gistRead(id, token){
   const c = await gistRawText(id, token);
   return c === null ? null : decJSON(c);
 }
+/* 두 기록을 합친다 — a 를 기준으로 b 에만 있는 것을 더한다.
+   덮어쓰기(마지막에 저장한 쪽이 이김) 때문에 기록이 사라지는 일을 막는다.
+   대신 한쪽에서 지운 항목이 다른 쪽에서 되살아날 수 있다 — 잃는 것보다는 낫다. */
+function mergeStates(a, b){
+  const out = migrate(Object.assign(blank(), a));
+  const bb = migrate(Object.assign(blank(), b));
+  const addRows = (mine, theirs) => {
+    const have = new Set((mine || []).map(x => x.id));
+    const extra = (theirs || []).filter(x => x && !have.has(x.id));
+    return extra.length ? (mine || []).concat(extra) : mine;
+  };
+  Object.keys(bb.items || {}).forEach(k => {
+    out.items[k] = addRows(out.items[k] || [], bb.items[k]);
+  });
+  Object.keys(bb.notes || {}).forEach(k => {
+    out.notes[k] = addRows(out.notes[k] || [], bb.notes[k]);
+  });
+  const hIds = new Set((out.habits || []).map(x => x.id));
+  (bb.habits || []).forEach(h => { if(!hIds.has(h.id)) out.habits.push(h); });
+  const pNames = new Set((out.projects || []).map(x => x.name));
+  (bb.projects || []).forEach(pj => { if(!pNames.has(pj.name)) out.projects.push(pj); });
+  Object.keys(bb.habitLog || {}).forEach(k => {
+    const set = new Set(out.habitLog[k] || []);
+    (bb.habitLog[k] || []).forEach(id => set.add(id));
+    out.habitLog[k] = Array.from(set);
+  });
+  Object.keys(bb.metrics || {}).forEach(k => {
+    out.metrics[k] = Object.assign({}, bb.metrics[k], out.metrics[k] || {});
+  });
+  out.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
+  return out;
+}
+function countRows(st){
+  let n = 0;
+  Object.keys(st.items || {}).forEach(k => n += (st.items[k] || []).length);
+  Object.keys(st.notes || {}).forEach(k => n += (st.notes[k] || []).length);
+  return n;
+}
 async function adoptRemote(remote){
   const view = S.view;
-  S = migrate(Object.assign(blank(), remote));
+  const before = countRows(S);
+  const merged = mergeStates(S, remote);
+  const kept = countRows(merged) - countRows(migrate(Object.assign(blank(), remote)));
+  S = merged;
   S.view = view;
   await saveLocal();
   dirty = false;
+  if(kept > 0) schedulePush();          /* 이 기기에만 있던 것을 다시 올려 둔다 */
+  if(before > 0 && kept > 0) toast("다른 기기 기록과 합쳤습니다 (이 기기 것 " + kept + "건 유지)");
 }
 async function syncPull(silent){
   if(!sync.on) return;
