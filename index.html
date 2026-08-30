@@ -471,6 +471,11 @@ html,body{max-width:100%; overflow-x:hidden; overscroll-behavior-x:none}
 .chk{display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--ink-2); cursor:pointer}
 .chk input{width:16px; height:16px; accent-color:var(--accent)}
 .mdfoot{padding:12px 18px 15px; display:flex; gap:8px; align-items:center; border-top:1px solid var(--line-2)}
+.mdfoot2{flex-wrap:wrap}
+.synok{background:var(--accent-soft); color:var(--accent-ink); border-radius:9px; padding:10px 13px;
+  font-size:12px; line-height:1.7}
+.synok b{display:block; font-size:13px; margin-bottom:2px}
+.synok b + b{display:inline; font-size:12px; margin:0}
 .mdfoot .sp{flex:1}
 
 /* ── 주간 ── */
@@ -4830,6 +4835,11 @@ function openSyncModal(){
       + '<div class="mdhead"><h4>설정</h4><span class="sp"></span>'
       + '<span class="hbhint">' + (sync.on ? "켜져 있습니다" : "꺼져 있습니다") + '</span></div>'
       + '<div class="mdbody">'
+      + (sync.on
+          ? '<div class="synok"><b>이 기기는 이미 연결되어 있습니다.</b>'
+            + '평소에는 <b>아무것도 누르지 않아도</b> 입력하는 대로 저장되고 다른 기기로 넘어갑니다. '
+            + '아래는 새 기기를 붙이거나 문제가 있을 때만 씁니다.</div>'
+          : '')
       + '<div class="fld"><label>연결 코드 또는 GitHub 토큰</label><div class="frow">'
       + '<input type="password" class="f" id="sy-token" placeholder="연결 코드를 붙여넣거나 토큰 입력"'
       + ' value="' + esc(sync.token) + '" autocomplete="off" style="flex:1">'
@@ -4872,12 +4882,15 @@ function openSyncModal(){
           : '<div class="frow"><span class="hbhint">잠금이 꺼져 있습니다.</span>'
             + '<span class="sp"></span><button class="btn" id="sy-reset">이 기기 초기화</button></div>')
       + '</div>'
-      + '</div><div class="mdfoot">'
-      + (sync.on ? '<button class="btn" id="sy-off">연결 해제</button>' : '')
+      + '</div><div class="mdfoot mdfoot2">'
+      + (sync.on ? '<button class="btn" id="sy-off" title="이 기기에서 동기화를 끕니다. 기록은 남습니다">'
+                   + '이 기기 연결 끄기</button>' : '')
       + '<span class="sp"></span>'
-      + (sync.on ? '<button class="btn" id="sy-now">지금 동기화</button>' : '')
+      + (sync.on ? '<button class="btn" id="sy-now" title="기다리지 않고 지금 바로 주고받습니다">'
+                   + '지금 바로 주고받기</button>' : '')
       + '<button class="btn" id="sy-cancel">닫기</button>'
-      + '<button class="btn primary" id="sy-save">연결</button></div></div>';
+      + '<button class="btn primary" id="sy-save">'
+      + (sync.on ? '바꾼 값 저장' : '연결하기') + '</button></div></div>';
     wire();
   };
   const wire = () => {
