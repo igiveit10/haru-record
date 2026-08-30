@@ -4404,8 +4404,9 @@ function gateSetup(){
 
 function gateJoin(){
   gate('<h2>다른 기기에서 쓰던 기록 이어서 쓰기</h2>'
-    + '<p>먼저 쓰시던 기기에서 우측 위 <b>⚙</b> 를 열면 토큰과 저장소(Gist ID)가 있습니다. '
-    + '그 둘과 그때 정한 비밀번호를 넣어 주세요.</p>'
+    + '<p>먼저 쓰시던 기기에서 우측 위 <b>⚙</b> → <b>연결 코드 복사</b> 를 누른 뒤, '
+    + '그 코드를 아래 <b>토큰 칸에 붙여넣으세요</b>. 저장소는 알아서 채워집니다. '
+    + '비밀번호는 그때 정하신 것을 넣어 주세요.</p>'
     + '<input type="password" class="f" id="j-token" placeholder="GitHub 토큰" autocomplete="off">'
     + '<input type="text" class="f" id="j-gist" placeholder="저장소 (비워 두면 알아서 찾습니다)" autocomplete="off">'
     + '<input type="password" class="f" id="j-pass" placeholder="비밀번호" autocomplete="current-password">'
@@ -4413,6 +4414,7 @@ function gateJoin(){
     + '<button class="btn primary" id="j-go">가져오기</button>'
     + '<button class="gatelink" id="j-back">처음으로</button>');
   $("j-back").onclick = gateSetup;
+  bindConnPaste($("j-token"), $("j-gist"));
   const go = async () => {
     if(gateBusy) return;
     const tk = $("j-token").value.trim(), pw = $("j-pass").value;
@@ -4532,6 +4534,34 @@ const GIST_FILE = "haru-record.json";
 let sync = {gistId:"", token:"", on:false};
 let syncState = "off", syncMsg = "", syncAt = 0, pushTimer = null;
 
+/* 토큰과 저장소를 한 줄로 묶어 옮긴다 (비밀번호는 절대 넣지 않는다) */
+const CONN_TAG = "haru1.";
+function connCode(){
+  try { return CONN_TAG + btoa(JSON.stringify({t: sync.token || "", g: sync.gistId || ""})); }
+  catch(e){ return ""; }
+}
+function readConnCode(v){
+  v = (v || "").trim();
+  if(v.indexOf(CONN_TAG) !== 0) return null;
+  try {
+    const o = JSON.parse(atob(v.slice(CONN_TAG.length)));
+    if(o && typeof o.t === "string") return {token:o.t, gistId:o.g || ""};
+  } catch(e){}
+  return null;
+}
+/* 토큰 칸에 연결 코드를 붙여넣으면 두 칸을 알아서 채운다 */
+function bindConnPaste(tokenEl, gistEl){
+  if(!tokenEl) return;
+  const grab = () => {
+    const c = readConnCode(tokenEl.value);
+    if(!c) return;
+    tokenEl.value = c.token;
+    if(gistEl && c.gistId) gistEl.value = c.gistId;
+    toast("연결 코드를 읽었습니다 — 비밀번호만 넣으면 됩니다");
+  };
+  tokenEl.addEventListener("input", () => setTimeout(grab, 0));
+  tokenEl.addEventListener("paste", () => setTimeout(grab, 0));
+}
 function loadSync(){
   try {
     const raw = localStorage.getItem(SYNC_LS);
@@ -4706,6 +4736,12 @@ function openSyncModal(){
       + (sync.gistId ? '<button class="btn" id="sy-copy">복사</button>' : '')
       + '<button class="btn" id="sy-new">새로 만들기</button></div>'
       + '<span class="hbhint">비워 두면 이 토큰의 저장소에서 알아서 찾습니다</span></div>'
+      + (sync.token
+          ? '<div class="fld"><label>다른 기기에 옮기기</label><div class="frow">'
+            + '<button class="btn primary" id="sy-code">연결 코드 복사</button></div>'
+            + '<span class="hbhint">다른 기기에서는 <b>토큰 칸에 붙여넣기만</b> 하면 '
+            + '토큰과 저장소가 한 번에 채워집니다. 비밀번호는 따로 넣으셔야 합니다.</span></div>'
+          : '')
       + '<div class="pdsum">'
       + '<span class="stat">상태 <b>' + esc(busy || syncLabel()) + '</b></span>'
       + '<span class="stat">이 기기 기록 <b>' + mb(bytes) + '</b></span>'
@@ -4735,6 +4771,21 @@ function openSyncModal(){
   };
   const wire = () => {
     scrim.querySelector("#sy-cancel").onclick = close;
+    const cc = scrim.querySelector("#sy-code");
+    if(cc) cc.onclick = async () => {
+      const v = connCode();
+      let ok = false;
+      try { await navigator.clipboard.writeText(v); ok = true; } catch(e){}
+      if(!ok){
+        const tmp = document.createElement("input");
+        tmp.value = v; tmp.style.position = "fixed"; tmp.style.opacity = "0";
+        document.body.appendChild(tmp); tmp.focus(); tmp.select();
+        try { ok = document.execCommand("copy"); } catch(e2){}
+        tmp.remove();
+      }
+      toast(ok ? "연결 코드를 복사했습니다 — 다른 기기 토큰 칸에 붙여넣으세요"
+               : "복사가 막혀 있습니다. 토큰과 저장소를 각각 복사해 주세요");
+    };
     const tcp = scrim.querySelector("#sy-tcopy");
     if(tcp) tcp.onclick = async () => {
       const el = scrim.querySelector("#sy-token"), v = el.value.trim();
@@ -4745,6 +4796,7 @@ function openSyncModal(){
       }
       toast(ok ? "토큰을 복사했습니다" : "복사가 막혀 있습니다. 칸의 값을 직접 복사해 주세요");
     };
+    bindConnPaste(scrim.querySelector("#sy-token"), scrim.querySelector("#sy-gist"));
     const cp = scrim.querySelector("#sy-copy");
     if(cp) cp.onclick = async () => {
       const v = scrim.querySelector("#sy-gist").value.trim();
