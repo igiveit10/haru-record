@@ -4562,6 +4562,13 @@ async function gistRead(id, token){
    대신 한쪽에서 지운 항목이 다른 쪽에서 되살아날 수 있다 — 잃는 것보다는 낫다. */
 function mergeStates(a, b){
   const out = migrate(Object.assign(blank(), a));
+  /* 얕은 복사라 그대로 두면 원본을 건드린다 — 담는 그릇은 새로 만든다 */
+  out.items = Object.assign({}, a.items || {});
+  out.notes = Object.assign({}, a.notes || {});
+  out.habits = (a.habits || []).slice();
+  out.projects = (a.projects || []).slice();
+  out.habitLog = Object.assign({}, a.habitLog || {});
+  out.metrics = Object.assign({}, a.metrics || {});
   const bb = migrate(Object.assign(blank(), b));
   const addRows = (mine, theirs) => {
     const have = new Set((mine || []).map(x => x.id));
