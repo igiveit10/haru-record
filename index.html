@@ -4774,7 +4774,6 @@ async function adoptRemote(remote){
   await saveLocal();
   dirty = false;
   if(kept > 0) schedulePush();          /* 이 기기에만 있던 것을 다시 올려 둔다 */
-  if(before > 0 && kept > 0) toast("다른 기기 기록과 합쳤습니다 (이 기기 것 " + kept + "건 유지)");
 }
 async function syncPull(silent){
   if(!sync.on) return;
@@ -4782,20 +4781,30 @@ async function syncPull(silent){
   try {
     const rawTxt = await gistRawText(sync.gistId);
     if(rawTxt === null){ await syncPush(true); return; }
-    const remote = await decJSON(rawTxt);
-    if(!remote){ await syncPush(true); return; }
+    let remote = null;
+    try { remote = await decJSON(rawTxt); } catch(e){ remote = null; }
+    if(!remote){
+      /* 서버에 뭔가 있는데 못 읽는다 — 덮어쓰지 않는다 */
+      setSync("error", "서버 기록을 열지 못했습니다. 비밀번호를 확인해 주세요");
+      return;
+    }
     try {
       const envChk = JSON.parse(rawTxt);
       if(envChk && envChk.enc && !envChk.salt && lockCfg && lockCfg.salt){
         await syncPush(true);   /* 예전 방식 봉투를 새 방식으로 올려 둔다 */
       }
     } catch(e){}
-    const rAt = remote.updatedAt || 0, lAt = S.updatedAt || 0;
-    if(rAt > lAt){
-      await adoptRemote(remote); render();
-      if(!silent) toast("다른 기기의 최신 기록을 받아왔습니다");
-      setSync("idle");
-    } else if(lAt > rAt){ await syncPush(true); }
+    /* 시각을 비교해 한쪽을 버리지 않는다 — 언제나 양쪽을 합친다.
+       기기 시계가 틀어져 있어도 기록이 사라지지 않게. */
+    const rState = migrate(Object.assign(blank(), remote));
+    const mine = countRows(S), theirs = countRows(rState);
+    await adoptRemote(remote);
+    const now = countRows(S);
+    if(now > mine){
+      render();
+      if(!silent) toast("다른 기기 기록 " + (now - mine) + "건을 받아왔습니다");
+    }
+    if(now > theirs) await syncPush(true);      /* 이 기기에만 있던 것을 올린다 */
     else setSync("idle");
   } catch(e){ setSync("error", e.message || String(e)); }
 }
