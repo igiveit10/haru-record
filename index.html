@@ -1340,6 +1340,8 @@ async function loadState(){
   if(!dirty && !localBroken) await saveLocal();
 }
 let staleWarned = false;
+let saveFail = "";      /* 마지막 저장 실패 이유 — 비어 있으면 정상 */
+let savedAt = 0;        /* 마지막으로 실제 저장된 시각 */
 async function saveLocal(){
   try {
     const prev = localStorage.getItem(LS);
@@ -1359,8 +1361,17 @@ async function saveLocal(){
     /* 직전 판을 한 벌 남겨 둔다 — 실수로 덮어써도 되살릴 수 있게 */
     if(prev && prev !== next){ try { localStorage.setItem(LS + "-prev", prev); } catch(e){} }
     localStorage.setItem(LS, next);
+    /* 진짜로 들어갔는지 되읽어 확인한다 */
+    if(localStorage.getItem(LS) !== next) throw new Error("저장 후 확인 실패");
+    saveFail = ""; savedAt = Date.now();
+    renderSave();
     return true;
-  } catch(e){ return false; }
+  } catch(e){
+    saveFail = e && e.message ? e.message : String(e);
+    renderSave();
+    toast("저장하지 못했습니다 — " + saveFail);
+    return false;
+  }
 }
 /* 직전 판으로 되돌리기 (콘솔에서: haruUndo()) */
 async function haruUndo(){
@@ -1595,6 +1606,13 @@ function render(){
 }
 function renderSave(){
   const t = $("savetext"), dot = $("dot"), keep = $("keep");
+  if(!t) return;
+  if(saveFail){
+    t.textContent = "저장 안 됨 — " + saveFail;
+    dot.className = "dotpulse dirty";
+    if(keep) keep.hidden = true;
+    return;
+  }
   if(sync.on){
     keep.hidden = !artifactApi;
     if(artifactApi) keep.disabled = !dirty;
