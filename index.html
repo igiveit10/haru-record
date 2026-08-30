@@ -1337,14 +1337,28 @@ async function loadState(){
   if(["month","3m","6m","all"].indexOf(S.view.hbRange) < 0) S.view.hbRange = "month";
   if(!dirty && !localBroken) await saveLocal();
 }
+let staleWarned = false;
 async function saveLocal(){
   try {
-    const next = await encJSON(S);
     const prev = localStorage.getItem(LS);
+    /* 다른 탭이 더 최신 기록을 저장해 뒀다면 덮어쓰지 않는다 */
+    if(prev){
+      let stored = null;
+      try { stored = await decJSON(prev); } catch(e){ stored = null; }
+      if(stored && (stored.updatedAt || 0) > (S.updatedAt || 0)){
+        if(!staleWarned){
+          staleWarned = true;
+          toast("다른 탭에 더 최신 기록이 있어 저장하지 않았습니다 — 새로고침 해주세요");
+        }
+        return false;
+      }
+    }
+    const next = await encJSON(S);
     /* 직전 판을 한 벌 남겨 둔다 — 실수로 덮어써도 되살릴 수 있게 */
     if(prev && prev !== next){ try { localStorage.setItem(LS + "-prev", prev); } catch(e){} }
     localStorage.setItem(LS, next);
-  } catch(e){}
+    return true;
+  } catch(e){ return false; }
 }
 /* 직전 판으로 되돌리기 (콘솔에서: haruUndo()) */
 async function haruUndo(){
