@@ -4689,9 +4689,12 @@ function openSyncModal(){
       + '<div class="mdhead"><h4>설정</h4><span class="sp"></span>'
       + '<span class="hbhint">' + (sync.on ? "켜져 있습니다" : "꺼져 있습니다") + '</span></div>'
       + '<div class="mdbody">'
-      + '<div class="fld"><label>GitHub 토큰</label>'
+      + '<div class="fld"><label>GitHub 토큰</label><div class="frow">'
       + '<input type="password" class="f" id="sy-token" placeholder="ghp_ 또는 github_pat_ 로 시작"'
-      + ' value="' + esc(sync.token) + '" autocomplete="off"></div>'
+      + ' value="' + esc(sync.token) + '" autocomplete="off" style="flex:1">'
+      + (sync.token ? '<button class="btn" id="sy-tcopy">복사</button>' : '') + '</div>'
+      + (sync.token ? '<span class="hbhint">다른 브라우저에 넣을 때 복사해 쓰세요</span>' : '')
+      + '</div>'
       + '<div class="fld"' + (needPw ? ' style="outline:2px solid var(--sun);outline-offset:6px;border-radius:6px"' : '')
       + '><label>기록 비밀번호</label>'
       + '<input type="password" class="f" id="sy-pass" placeholder="다른 기기에서 정한 비밀번호"'
@@ -4732,6 +4735,16 @@ function openSyncModal(){
   };
   const wire = () => {
     scrim.querySelector("#sy-cancel").onclick = close;
+    const tcp = scrim.querySelector("#sy-tcopy");
+    if(tcp) tcp.onclick = async () => {
+      const el = scrim.querySelector("#sy-token"), v = el.value.trim();
+      let ok = false;
+      try { await navigator.clipboard.writeText(v); ok = true; } catch(e){
+        el.focus(); el.select();
+        try { ok = document.execCommand("copy"); } catch(e2){}
+      }
+      toast(ok ? "토큰을 복사했습니다" : "복사가 막혀 있습니다. 칸의 값을 직접 복사해 주세요");
+    };
     const cp = scrim.querySelector("#sy-copy");
     if(cp) cp.onclick = async () => {
       const v = scrim.querySelector("#sy-gist").value.trim();
