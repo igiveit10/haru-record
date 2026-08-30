@@ -284,6 +284,29 @@ html,body{max-width:100%; overflow-x:hidden; overscroll-behavior-x:none}
 .hbtog.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink)}
 .hbtog.on i{background:var(--accent); border-color:var(--accent)}
 .hbtog.on svg{opacity:1}
+.tdrows{display:flex; flex-direction:column}
+.tdrow{display:flex; align-items:center; gap:7px; padding:7px 12px; font-size:13px;
+  border-bottom:1px solid var(--rule)}
+.tdrow:last-child{border-bottom:0}
+.tdrow:hover{background:var(--card-2)}
+.tdrow .sp{flex:1}
+.tdchk{flex:none; width:19px; height:19px; border:1.4px solid var(--line); border-radius:6px;
+  display:grid; place-items:center; background:none; cursor:pointer; color:var(--on-accent)}
+.tdchk svg{width:11px; height:11px; opacity:0}
+.tdchk:hover{border-color:var(--accent)}
+.tdchk.on{background:var(--accent); border-color:var(--accent)}
+.tdchk.on svg{opacity:1}
+.tdtime{flex:none; font-family:var(--mono); font-size:10.5px; color:var(--ink-3);
+  font-variant-numeric:tabular-nums; min-width:34px}
+.tdtxt{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer}
+.tdtxt:hover{color:var(--accent-ink); text-decoration:underline; text-underline-offset:2px}
+.tdrow.done .tdtxt{color:var(--ink-3); text-decoration:line-through}
+.tdact{flex:none; width:22px; height:22px; border-radius:6px; color:var(--ink-3); background:none;
+  border:0; cursor:pointer; display:grid; place-items:center; opacity:0; font-size:13px}
+.tdact svg{width:12px; height:12px}
+.tdrow:hover .tdact,.tdrow:focus-within .tdact{opacity:1}
+.tdact:hover{background:var(--line-2); color:var(--ink)}
+@media (hover:none){.tdact{opacity:.6}}
 .hbnone{padding:11px 14px}
 .hbrows{display:flex; flex-direction:column; gap:6px; padding:11px 13px 12px}
 .hbline{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
@@ -1783,12 +1806,38 @@ function renderDaily(){
     + '<span class="sp"></span><button id="addbtn">+ 새 항목</button></div></div>';
 
   /* 오른쪽 */
-  h += '<div class="colstack">' + habitStrip(k) + noteBlock(k) + '</div></div>';
+  h += '<div class="colstack">' + taskBlock(k) + habitStrip(k) + noteBlock(k) + '</div></div>';
 
   $("view").innerHTML = h;
   bindDaily();
 }
 
+function taskBlock(k){
+  const rows = itemsOn(k).filter(o => o.it.kind === "task" && !o.span
+    && o.it.status !== "deleted" && o.it.status !== "moved")
+    .sort((a,b) => (a.it.allDay ? "" : a.it.start).localeCompare(b.it.allDay ? "" : b.it.start));
+  const done = rows.filter(o => o.it.status === "done").length;
+  let h = '<div class="panel"><div class="ph"><h3>오늘의 할일</h3><span class="sp"></span>'
+    + (rows.length ? '<em>' + done + '/' + rows.length + '</em>' : '') + '</div>';
+  if(!rows.length)
+    return h + '<div class="hbnone"><span class="empty">예정일정에 <b>할일</b>로 넣으면 여기 모입니다.</span></div></div>';
+  h += '<div class="tdrows">';
+  rows.forEach(o => {
+    const it = o.it;
+    h += '<div class="tdrow ' + it.status + '" data-ok="' + o.ok + '" data-id="' + it.id + '">'
+      + '<button class="tdchk' + (it.status === "done" ? " on" : "") + '" data-a="done"'
+      + ' title="' + (it.status === "done" ? "완료 해제" : "완료") + '"'
+      + ' aria-label="완료">' + SVG_CHECK + '</button>'
+      + '<span class="tdtime">' + (it.allDay ? "종일" : esc(it.start)) + '</span>'
+      + '<span class="tag ' + catCls(it.cat) + '">' + it.cat + '</span>'
+      + '<span class="tdtxt">' + esc(it.title) + '</span>'
+      + '<span class="sp"></span>'
+      + '<button class="tdact" data-a="tmr" title="내일로 미루기">' + SVG_ARROW + '</button>'
+      + '<button class="tdact" data-a="more" title="다른 날로 · 수정 · 삭제">&#8943;</button>'
+      + '</div>';
+  });
+  return h + '</div></div>';
+}
 function habitStrip(k){
   const hb = habits();
   const done = hb.filter(x => hasHabit(k, x.id)).length;
@@ -1898,6 +1947,32 @@ function bindDaily(){
     openItemModal(k, null, null, {start: toHM(min), end: toHM(min + 60)});
   };
 
+  /* 오늘의 할일 */
+  view.querySelectorAll(".tdrow").forEach(row => {
+    const ok = row.dataset.ok, id = row.dataset.id;
+    row.querySelectorAll("button[data-a]").forEach(b => {
+      b.onclick = e => {
+        e.stopPropagation();
+        const a = b.dataset.a, cur = findItem(ok, id);
+        if(!cur) return;
+        if(a === "done"){
+          cur.status = cur.status === "done" ? "open" : "done";
+          touch(); renderDaily(); renderMini();
+        } else if(a === "tmr"){
+          const nk = addDays(ok, 1);
+          if(postpone(ok, id, nk, cur.allDay ? "" : cur.start)){
+            render();
+            toast("내일(" + shortKo(nk) + ")로 미뤘습니다");
+          }
+        } else if(a === "more"){
+          const r = b.getBoundingClientRect();
+          openCMenu(Math.min(r.left, innerWidth - 260), r.bottom + 4, ok, id);
+        }
+      };
+    });
+    row.querySelector(".tdtxt").onclick = () => openItemModal(S.view.selected, ok, id, null);
+  });
+
   /* 시간 항목 */
   view.querySelectorAll(".tgitem").forEach(el => {
     const ok = el.dataset.ok, id = el.dataset.id;
@@ -1989,6 +2064,22 @@ function bindItemActions(el, ok, id){
 
 /* ═══════════ 우클릭 메뉴 ═══════════ */
 function closeCMenu(){ const m = $("cmenu"); if(m) m.remove(); }
+/* 항목을 다른 날로 미룬다 — 원본은 '연기'로 남기고 새 날짜에 복사본을 둔다 */
+function postpone(ok, id, nk, t){
+  const cur = findItem(ok, id);
+  if(!cur || !nk) return false;
+  const dur = cur.allDay ? 0 : Math.max(30, toMin(cur.end || cur.start) - toMin(cur.start));
+  const copy = Object.assign({}, cur, {id:uid(), status:"open", endDate:nk});
+  if(!cur.allDay && t){ copy.start = t; copy.end = toHM(toMin(t) + dur); }
+  if(cur.allDay){
+    const span = Math.max(0, Math.round((fromKey(cur.endDate) - fromKey(ok)) / 86400000));
+    copy.endDate = addDays(nk, span);
+  }
+  cur.status = "moved";
+  pushTo(S.items, nk, copy);
+  touch();
+  return copy;
+}
 function openCMenu(x, y, ok, id){
   closeCMenu();
   const it = findItem(ok, id); if(!it) return;
@@ -2021,20 +2112,11 @@ function openCMenu(x, y, ok, id){
     closeCMenu(); render();
   };
   $("cm-move").onclick = () => {
-    const cur = findItem(ok, id); if(!cur){ closeCMenu(); return; }
     const nk = $("cm-date").value;
     if(!nk){ toast("옮길 날짜를 골라 주세요"); return; }
-    const t = $("cm-time") ? $("cm-time").value : "";
-    const dur = cur.allDay ? 0 : Math.max(30, toMin(cur.end || cur.start) - toMin(cur.start));
-    const copy = Object.assign({}, cur, {id:uid(), status:"open", endDate:nk});
-    if(!cur.allDay && t){ copy.start = t; copy.end = toHM(toMin(t) + dur); }
-    if(cur.allDay){
-      const span = Math.max(0, Math.round((fromKey(cur.endDate) - fromKey(ok)) / 86400000));
-      copy.endDate = addDays(nk, span);
-    }
-    cur.status = "moved";
-    pushTo(S.items, nk, copy);
-    touch(); closeCMenu(); render();
+    const copy = postpone(ok, id, nk, $("cm-time") ? $("cm-time").value : "");
+    if(!copy){ closeCMenu(); return; }
+    closeCMenu(); render();
     toast(labelKo(nk) + (copy.start ? " " + copy.start : "") + "로 연기했습니다");
   };
   setTimeout(() => {
@@ -4362,8 +4444,9 @@ function gateSetup(){
   gate('<h2>비밀번호를 정해 주세요</h2>'
     + '<p>이 비밀번호로 기록을 암호로 잠급니다. 비밀번호를 모르면 이 기기에서도, '
     + '동기화 저장소에서도 내용을 읽을 수 없습니다.</p>'
-    + '<input type="password" class="f" id="g-p1" placeholder="비밀번호 (8자 이상)" autocomplete="new-password">'
-    + '<input type="password" class="f" id="g-p2" placeholder="한 번 더" autocomplete="new-password">'
+    + '<div class="frow"><input type="password" class="f" id="g-p1" placeholder="비밀번호 (8자 이상)"'
+    + ' autocomplete="new-password" style="flex:1">'
+    + '<button class="btn" id="g-eye" type="button">보기</button></div>'
     + '<div class="gatenote">잠금을 켜면 <b>복구 키 파일</b>이 한 번 내려받아집니다. '
     + '비밀번호를 잊었을 때 그 파일로만 되살릴 수 있으니, 이 기기 밖 안전한 곳에 보관해 두세요.</div>'
     + '<label class="gatechk"><input type="checkbox" id="g-ack">복구 키 파일을 보관하겠습니다</label>'
@@ -4373,9 +4456,8 @@ function gateSetup(){
     + '<button class="gatelink" id="g-skip">잠금 없이 쓰기</button>');
   const go = async () => {
     if(gateBusy) return;
-    const p1 = $("g-p1").value, p2 = $("g-p2").value;
+    const p1 = $("g-p1").value;
     if(p1.length < 8){ gateMsg("비밀번호는 8자 이상으로 해주세요."); return; }
-    if(p1 !== p2){ gateMsg("두 번 입력한 비밀번호가 다릅니다."); return; }
     if(!$("g-ack").checked){ gateMsg("복구 키 보관에 동의해 주세요."); return; }
     gateBusy = true; gateMsg("잠그는 중…");
     try {
@@ -4393,7 +4475,13 @@ function gateSetup(){
   };
   $("g-go").onclick = go;
   $("g-join").onclick = gateJoin;
-  $("g-p2").onkeydown = e => { if(!composing(e) && e.key === "Enter") go(); };
+  $("g-p1").onkeydown = e => { if(!composing(e) && e.key === "Enter") go(); };
+  $("g-eye").onclick = () => {
+    const el = $("g-p1"), show = el.type === "password";
+    el.type = show ? "text" : "password";
+    $("g-eye").textContent = show ? "숨기기" : "보기";
+    el.focus();
+  };
   $("g-skip").onclick = async () => {
     if(!confirm("잠금 없이 쓰면 이 주소를 아는 사람이 기록을 볼 수 있습니다.\n계속할까요?")) return;
     lockCfg = {off:true}; saveLock();
