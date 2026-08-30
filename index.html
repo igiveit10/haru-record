@@ -1360,6 +1360,10 @@ async function haruUndo(){
   render(); toast("직전 기록으로 되돌렸습니다");
   return true;
 }
+/* 보는 화면만 바뀐 것 — 기록의 시각을 건드리지도, 올리지도 않는다 */
+function touchView(){
+  saveLocal();
+}
 function touch(){
   S.updatedAt = Date.now(); dirty = true;
   saveLocal();
@@ -2719,7 +2723,7 @@ function bindHabitTab(){
   if(nb) nb.onclick = openHabitModal;
 
   view.querySelectorAll("#hb-range button").forEach(b => b.onclick = () => {
-    S.view.hbRange = b.dataset.v; touch(); renderHabitTab();
+    S.view.hbRange = b.dataset.v; touchView(); renderHabitTab();
   });
   view.querySelectorAll('.hnavm [data-a]').forEach(b => b.onclick = () => {
     const [y,m] = S.view.month.split("-").map(Number);
@@ -3037,7 +3041,7 @@ function renderProjects(){
     if(fin.some(r => r.name === nm)) g.classList.add("finished");
   });
   view.querySelectorAll("#pj-cat button").forEach(b => b.onclick = () => {
-    S.view.prjCat = b.dataset.v; touch(); render();
+    S.view.prjCat = b.dataset.v; touchView(); render();
   });
   let newCat2 = "업무";
   view.querySelectorAll("#pj-new-cat button").forEach(b => b.onclick = () => {
@@ -3285,10 +3289,10 @@ function renderWeekly(){
 function bindWeekly(days){
   const view = $("view"), [from, to] = gridRange();
   view.querySelectorAll("#wk-view button").forEach(b => b.onclick = () => {
-    S.view.wkView = b.dataset.v; S.view.wkViewSet = true; touch(); renderWeekly();
+    S.view.wkView = b.dataset.v; S.view.wkViewSet = true; touchView(); renderWeekly();
   });
   view.querySelectorAll("#wk-cat button").forEach(b => b.onclick = () => {
-    S.view.wkCat = b.dataset.v; touch(); renderWeekly();
+    S.view.wkCat = b.dataset.v; touchView(); renderWeekly();
   });
   view.querySelectorAll(".wtgd").forEach(b => b.onclick = () => select(b.dataset.k, "day"));
   view.querySelectorAll(".wkchk").forEach(b => b.onclick = () => {
@@ -4005,7 +4009,7 @@ function openSearch(){
 function select(k, mode){
   S.view.selected = k; S.view.month = k.slice(0,7);
   if(mode) S.view.mode = mode;
-  touch(); render();
+  touchView(); render();
 }
 function shift(n){
   const m = S.view.mode;
@@ -4015,10 +4019,10 @@ function shift(n){
     const [y,mm] = S.view.month.split("-").map(Number);
     const d = new Date(y, mm-1+n, 1);
     S.view.month = d.getFullYear() + "-" + pad(d.getMonth()+1);
-    touch(); render();
+    touchView(); render();
   }
 }
-function setMode(m){ S.view.mode = m; touch(); render(); }
+function setMode(m){ S.view.mode = m; touchView(); render(); }
 let toastT;
 function toast(msg){
   const el = $("toast"); el.textContent = msg; el.classList.add("show");
