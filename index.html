@@ -1206,7 +1206,7 @@ const SVG_PEN = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stro
 const pad = n => String(n).padStart(2,"0");
 const key = d => d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate());
 const fromKey = k => { const [y,m,d] = k.split("-").map(Number); return new Date(y,m-1,d); };
-const TODAY = key(new Date());
+let TODAY = key(new Date());
 const holiday = k => LUNAR_HOL[k] || FIXED_HOL[k.slice(5)] || null;
 const addDays = (k,n) => { const d = fromKey(k); d.setDate(d.getDate()+n); return key(d); };
 const labelKo = k => { const d = fromKey(k); return (d.getMonth()+1) + "월 " + d.getDate() + "일"; };
@@ -1320,7 +1320,7 @@ async function loadState(){
   else { S = embedded; }
   migrate(S);
   S.view = S.view || {};
-  if(!S.view.selected) S.view.selected = TODAY;
+  S.view.selected = TODAY;   /* 새로 열면 언제나 오늘 */
   if(MODES.indexOf(S.view.mode) < 0) S.view.mode = "day";
   S.view.month = S.view.selected.slice(0,7);
   S.view.q = ""; S.view.nfCat = S.view.nfCat || "전체"; S.view.nfKind = S.view.nfKind || "전체";
@@ -4054,6 +4054,46 @@ document.addEventListener("keydown", e => {
     el.classList.add(n > 0 ? "slL" : "slR");
     setTimeout(() => el.classList.remove("slL","slR"), 240);
   }, {passive:true});
+})();
+
+/* ── 자정을 넘기면 '오늘'을 새로 잡는다 ── */
+(function(){
+  const nowLine = () => {
+    const [from] = gridRange(), top0 = from * 60;
+    const n = new Date(), m = n.getHours()*60 + n.getMinutes();
+    const d = document.querySelector(".tgnow");
+    if(d) d.style.top = ((m - top0)/60*PX_H).toFixed(1) + "px";
+    const w = document.querySelector(".wtgnow");
+    if(w) w.style.top = ((m - top0)/60*PX_HW).toFixed(1) + "px";
+  };
+  const busy = () => {
+    if($("scrim") || $("cmenu") || document.querySelector(".lightbox")) return true;
+    const a = document.activeElement, t = (a && a.tagName || "").toLowerCase();
+    return t === "input" || t === "textarea";
+  };
+  setInterval(() => {
+    if(!S) return;
+    const k = key(new Date());
+    if(k !== TODAY){
+      if(busy()) return;                 /* 입력 중이면 다음 차례에 */
+      const wasToday = S.view.selected === TODAY;
+      TODAY = k;
+      if(wasToday){ S.view.selected = k; S.view.month = k.slice(0,7); }
+      render();
+      return;
+    }
+    if(!document.hidden) nowLine();
+  }, 30000);
+  addEventListener("visibilitychange", () => {
+    if(document.hidden || !S) return;
+    const k = key(new Date());
+    if(k !== TODAY && !busy()){
+      const wasToday = S.view.selected === TODAY;
+      TODAY = k;
+      if(wasToday){ S.view.selected = k; S.view.month = k.slice(0,7); }
+      render();
+    } else nowLine();
+  });
 })();
 
 let lastW = innerWidth, reflowT = null;
