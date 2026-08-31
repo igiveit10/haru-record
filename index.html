@@ -405,6 +405,7 @@ html,body{max-width:100%; overflow-x:hidden; overscroll-behavior-x:none}
 .cmenu button{display:flex; align-items:center; gap:9px; width:100%; text-align:left; padding:7px 11px;
   border-radius:6px; font-size:13px; color:var(--ink-2)}
 .cmenu button svg{width:13px; height:13px; flex:none}
+.cmenu .rev{display:inline-flex; transform:scaleX(-1); flex:none}
 .cmenu .head svg{width:12px; height:12px; flex:none; vertical-align:-2px}
 .cmenu button:hover{background:var(--card-2); color:var(--ink)}
 .cmenu button.danger:hover{color:var(--sun)}
@@ -2080,6 +2081,17 @@ function closeCMenu(){ const m = $("cmenu"); if(m) m.remove(); }
 function postpone(ok, id, nk, t){
   const cur = findItem(ok, id);
   if(!cur || !nk) return false;
+  /* 같은 날로 옮기는 건 연기가 아니다 — 잔상 없이 시각만 고친다 */
+  if(nk === ok){
+    if(!cur.allDay && t){
+      const d0 = Math.max(30, toMin(cur.end || cur.start) - toMin(cur.start));
+      cur.start = t; cur.end = toHM(Math.min(24*60 - 1, toMin(t) + d0));
+    }
+    cur.status = "open";
+    delete cur.movedTo;
+    touch();
+    return cur;
+  }
   const dur = cur.allDay ? 0 : Math.max(30, toMin(cur.end || cur.start) - toMin(cur.start));
   const copy = Object.assign({}, cur, {id:uid(), status:"open", endDate:nk});
   if(!cur.allDay && t){ copy.start = t; copy.end = toHM(toMin(t) + dur); }
@@ -2088,9 +2100,21 @@ function postpone(ok, id, nk, t){
     copy.endDate = addDays(nk, span);
   }
   cur.status = "moved";
+  cur.movedTo = {k: nk, id: copy.id};
   pushTo(S.items, nk, copy);
   touch();
   return copy;
+}
+/* 연기 취소 — 옮겨 둔 복사본을 지우고 원래 자리로 되돌린다 */
+function unpostpone(ok, id){
+  const cur = findItem(ok, id);
+  if(!cur) return false;
+  const mt = cur.movedTo;
+  if(mt && findItem(mt.k, mt.id)) removeItem(mt.k, mt.id);
+  cur.status = "open";
+  delete cur.movedTo;
+  touch();
+  return true;
 }
 function openCMenu(x, y, ok, id){
   closeCMenu();
@@ -2100,6 +2124,9 @@ function openCMenu(x, y, ok, id){
   el.innerHTML = '<div class="head">' + esc(it.title || "(제목 없음)") + '</div>'
     + '<button data-a="done">' + SVG_CHECK + (it.status === "done" ? "완료 해제" : "완료") + '</button>'
     + '<button data-a="edit">' + SVG_PEN + '수정</button>'
+    + (it.status === "moved"
+        ? '<button data-a="undo"><span class="rev">' + SVG_ARROW + '</span>연기 취소 · 이 자리로 되돌리기</button>'
+        : '')
     + '<div class="sep"></div>'
     + '<div class="head">' + SVG_ARROW.replace("14 14","14 14") + ' 연기 — 옮길 곳</div>'
     + '<div class="row"><input type="date" class="f" id="cm-date" value="' + addDays(ok,1) + '" style="flex:1">'
@@ -2119,6 +2146,7 @@ function openCMenu(x, y, ok, id){
     const a = b.dataset.a, cur = findItem(ok, id);
     if(!cur) { closeCMenu(); return; }
     if(a === "done"){ cur.status = cur.status === "done" ? "open" : "done"; touch(); }
+    else if(a === "undo"){ unpostpone(ok, id); toast("연기를 취소했습니다"); }
     else if(a === "edit"){ closeCMenu(); openItemModal(S.view.selected, ok, id, null); return; }
     else if(a === "del"){ removeItem(ok, id); touch(); }
     closeCMenu(); render();
